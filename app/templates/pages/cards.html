@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Cartões - FatCat{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h2 class="text-2xl font-black">Cartões</h2>
+    <button class="btn btn-primary" hx-get="/cards/form?{{ query }}" hx-target="#card-form-wrap" hx-swap="innerHTML">+ Adicionar cartão</button>
+  </div>
+  <div id="card-form-wrap"></div>
+  <div id="cards-table-wrap">
+    {% include "partials/cards_table.html" %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+<div class="card overflow-x-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Categoria</th>
+        <th>Valor</th>
+        <th>Início</th>
+        <th>Recorrente</th>
+        <th>Status mês</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in pix_rows %}
+      <tr>
+        <td>{{ row.item.description }}</td>
+        <td>{{ row.item.category }}</td>
+        <td>{{ row.amount_fmt }}</td>
+        <td>{{ row.start }}</td>
+        <td>{% if row.item.is_recurring %}Sim{% else %}Não{% endif %}</td>
+        <td>{% if row.active %}<span class="badge bg-emerald-900">Ativo</span>{% else %}<span class="badge bg-zinc-700">Inativo</span>{% endif %}</td>
+        <td>
+          <button class="btn" hx-get="/pix/form/{{ row.item.id }}?{{ query }}" hx-target="#pix-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button class="btn btn-danger" hx-delete="/pix/{{ row.item.id }}?{{ query }}" hx-target="#pix-table-wrap" hx-swap="innerHTML">Excluir</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">Nenhum PIX cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

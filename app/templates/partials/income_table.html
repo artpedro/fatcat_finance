@@ -1,0 +1,35 @@
+<div class="card overflow-x-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Fonte</th>
+        <th>Tipo</th>
+        <th>Valor</th>
+        <th>Início</th>
+        <th>Fim</th>
+        <th>Recorrente</th>
+        <th>Status mês</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in income_rows %}
+      <tr>
+        <td>{{ row.source.name }}</td>
+        <td>{{ row.source.kind }}</td>
+        <td>{{ row.amount_fmt }}</td>
+        <td>{{ row.start }}</td>
+        <td>{{ row.end }}</td>
+        <td>{% if row.source.is_recurring %}Sim{% else %}Não{% endif %}</td>
+        <td>{% if row.active %}<span class="badge bg-emerald-900">Ativa</span>{% else %}<span class="badge bg-zinc-700">Inativa</span>{% endif %}</td>
+        <td>
+          <button class="btn" hx-get="/income/form/{{ row.source.id }}?{{ query }}" hx-target="#income-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button class="btn btn-danger" hx-delete="/income/{{ row.source.id }}?{{ query }}" hx-target="#income-table-wrap" hx-swap="innerHTML">Excluir</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8">Nenhuma fonte cadastrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

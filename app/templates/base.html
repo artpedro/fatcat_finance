@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FatCat{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script defer src="/static/js/ui.js"></script>
+  <script defer src="/static/js/charts.js"></script>
+</head>
+<body class="bg-zinc-950 text-zinc-100">
+  <div class="min-h-screen flex">
+    <aside class="w-64 bg-zinc-900 border-r border-zinc-800 p-4 flex flex-col gap-5">
+      <div>
+        <h1 class="text-2xl font-black text-rose-300">FatCat</h1>
+        <p class="text-xs text-zinc-400">Controle Financeiro</p>
+      </div>
+      <nav class="space-y-1">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="/dashboard?{{ query }}">Dashboard</a>
+        <a class="nav-link {% if active == 'cards' %}active{% endif %}" href="/cards?{{ query }}">Cartões</a>
+        <a class="nav-link {% if active == 'expenses' %}active{% endif %}" href="/expenses?{{ query }}">Lançamentos</a>
+        <a class="nav-link {% if active == 'subscriptions' %}active{% endif %}" href="/subscriptions?{{ query }}">Assinaturas</a>
+        <a class="nav-link {% if active == 'pix' %}active{% endif %}" href="/pix?{{ query }}">PIX</a>
+        <a class="nav-link {% if active == 'income' %}active{% endif %}" href="/income?{{ query }}">Receitas</a>
+      </nav>
+      <div class="mt-auto space-y-3">
+        <div class="flex items-center justify-between rounded-lg border border-zinc-700 p-2">
+          <a href="/settings/month?delta=-1&path={{ request.url.path }}" class="px-2 py-1 rounded bg-zinc-800">◀</a>
+          <span class="font-semibold">{{ month_label }}</span>
+          <a href="/settings/month?delta=1&path={{ request.url.path }}" class="px-2 py-1 rounded bg-zinc-800">▶</a>
+        </div>
+        <form method="post" action="/settings/theme?path={{ request.url.path }}&month={{ month }}&year={{ year }}">
+          <button class="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm">Alternar tema</button>
+        </form>
+      </div>
+    </aside>
+    <main class="flex-1 p-6">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

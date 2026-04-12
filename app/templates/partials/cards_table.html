@@ -1,0 +1,33 @@
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Cartão</th>
+        <th>Fechamento</th>
+        <th>Vencimento</th>
+        <th>Total mês</th>
+        <th>Limite</th>
+        <th>Assinaturas</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in cards_rows %}
+      <tr>
+        <td><span class="inline-block w-2 h-2 rounded-full mr-2" style="background:{{ row.card.color }}"></span>{{ row.card.name }}</td>
+        <td>Dia {{ row.card.closing_day or "—" }}</td>
+        <td>Dia {{ row.card.due_day or "—" }}</td>
+        <td>{{ row.total_fmt }}</td>
+        <td>{% if row.card.limit_amount > 0 %}{{ row.outstanding_fmt }} / {{ row.limit_fmt }}{% else %}—{% endif %}</td>
+        <td>{% if row.card.is_used_by_subscriptions %}<span class="badge bg-rose-900">Sim</span>{% else %}<span class="badge bg-zinc-700">Não</span>{% endif %}</td>
+        <td>
+          <button class="btn" hx-get="/cards/form/{{ row.card.id }}?{{ query }}" hx-target="#card-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button class="btn btn-danger" hx-delete="/cards/{{ row.card.id }}?{{ query }}" hx-target="#cards-table-wrap" hx-swap="innerHTML">Excluir</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">Nenhum cartão cadastrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

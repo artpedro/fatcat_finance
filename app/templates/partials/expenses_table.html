@@ -1,0 +1,35 @@
+<div class="card overflow-x-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Tipo</th>
+        <th>Cartão</th>
+        <th>Total</th>
+        <th>Mês atual</th>
+        <th>Status</th>
+        <th>Categoria</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in expense_rows %}
+      <tr>
+        <td>{{ row.expense.description }}</td>
+        <td><span class="badge {% if row.expense.type == 'credit' %}bg-blue-900{% else %}bg-emerald-900{% endif %}">{{ row.expense.type }}</span></td>
+        <td>{{ cards_map.get(row.expense.card_id, "—") }}</td>
+        <td>{{ row.total_fmt }}</td>
+        <td>{{ row.month_fmt }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.expense.category }}</td>
+        <td>
+          <button class="btn" hx-get="/expenses/form/{{ row.expense.id }}?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button class="btn btn-danger" hx-delete="/expenses/{{ row.expense.id }}?{{ query }}" hx-target="#expenses-table-wrap" hx-swap="innerHTML">Excluir</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8">Nenhum lançamento encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

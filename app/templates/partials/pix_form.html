@@ -1,0 +1,20 @@
+<form class="card grid md:grid-cols-3 gap-3"
+      hx-post="/pix/save?{{ query }}"
+      hx-target="#pix-table-wrap"
+      hx-swap="innerHTML">
+  <input type="hidden" name="pix_id" value="{{ pix.id if pix else '' }}">
+  <label class="text-sm md:col-span-2">Descrição<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="description" required value="{{ pix.description if pix else '' }}"></label>
+  <label class="text-sm">Valor<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="number" min="0.01" step="0.01" name="amount" required value="{{ pix.amount if pix else '' }}"></label>
+  <label class="text-sm">Categoria<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="category" value="{{ pix.category if pix else 'Assinatura' }}"></label>
+  <label class="text-sm">Início<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="month" name="start" value="{{ start_val }}"></label>
+  <label class="text-sm">Recorrente
+    <select class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="is_recurring">
+      <option value="true" {% if pix and pix.is_recurring %}selected{% endif %}>Sim</option>
+      <option value="false" {% if not pix or not pix.is_recurring %}selected{% endif %}>Não</option>
+    </select>
+  </label>
+  <div class="md:col-span-3 flex gap-2 justify-end">
+    <button type="button" class="btn" hx-get="/pix/form-clear" hx-target="#pix-form-wrap" hx-swap="innerHTML">Cancelar</button>
+    <button class="btn btn-primary" type="submit">Salvar PIX</button>
+  </div>
+</form>

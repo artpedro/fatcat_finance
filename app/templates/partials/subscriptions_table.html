@@ -1,0 +1,31 @@
+<div class="card overflow-x-auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Pagamento</th>
+        <th>Valor mensal</th>
+        <th>Período</th>
+        <th>Status mês</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in subscriptions_rows %}
+      <tr>
+        <td>{{ row.sub.description }}</td>
+        <td>{{ row.pay_label }}</td>
+        <td>{{ row.amount_fmt }}</td>
+        <td>{{ row.period }}</td>
+        <td>{% if row.active %}<span class="badge bg-emerald-900">Ativa</span>{% else %}<span class="badge bg-zinc-700">Inativa</span>{% endif %}</td>
+        <td>
+          <button class="btn" hx-get="/subscriptions/form/{{ row.sub.id }}?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button class="btn btn-danger" hx-delete="/subscriptions/{{ row.sub.id }}?{{ query }}" hx-target="#subscriptions-table-wrap" hx-swap="innerHTML">Excluir</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Nenhuma assinatura cadastrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

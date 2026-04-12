@@ -1,0 +1,38 @@
+<form class="card grid md:grid-cols-3 gap-3"
+      hx-post="/subscriptions/save?{{ query }}"
+      hx-target="#subscriptions-table-wrap"
+      hx-swap="innerHTML">
+  <input type="hidden" name="sub_id" value="{{ sub.id if sub else '' }}">
+  <label class="text-sm md:col-span-2">Descrição<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="description" required value="{{ sub.description if sub else '' }}"></label>
+  <label class="text-sm">Valor mensal<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="number" min="0.01" step="0.01" name="amount_monthly" required value="{{ sub.amount_monthly if sub else '' }}"></label>
+  <label class="text-sm">Dia cobrança<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="number" min="1" max="31" name="billing_day" value="{{ sub.billing_day if sub else 5 }}"></label>
+  <label class="text-sm">Pagamento
+    {% set method = sub.payment_method if sub else 'card' %}
+    <select class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="payment_method">
+      <option value="card" {% if method == 'card' %}selected{% endif %}>Cartão</option>
+      <option value="pix" {% if method == 'pix' %}selected{% endif %}>PIX</option>
+    </select>
+  </label>
+  <label class="text-sm">Cartão
+    <select class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="card_id">
+      <option value="">—</option>
+      {% for card in cards %}
+      <option value="{{ card.id }}" {% if sub and sub.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="text-sm">Início<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="month" name="start" value="{{ start_val }}"></label>
+  <label class="text-sm">Fim (opcional)<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="month" name="end" value="{{ end_val }}"></label>
+  <label class="text-sm">Duração (meses)<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" type="number" min="1" name="duration_months" value="{{ sub.duration_months if sub and sub.duration_months else '' }}"></label>
+  <label class="text-sm">Indefinida
+    <select class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="is_indefinite">
+      <option value="true" {% if not sub or sub.is_indefinite %}selected{% endif %}>Sim</option>
+      <option value="false" {% if sub and not sub.is_indefinite %}selected{% endif %}>Não</option>
+    </select>
+  </label>
+  <label class="text-sm">Categoria PIX<input class="w-full mt-1 rounded bg-zinc-900 border border-zinc-700 p-2" name="pix_category" value="{{ sub.pix_category if sub else 'Assinatura' }}"></label>
+  <div class="md:col-span-3 flex gap-2 justify-end">
+    <button type="button" class="btn" hx-get="/subscriptions/form-clear" hx-target="#sub-form-wrap" hx-swap="innerHTML">Cancelar</button>
+    <button class="btn btn-primary" type="submit">Salvar assinatura</button>
+  </div>
+</form>
