@@ -1,0 +1,2 @@
+"""FatCat FastAPI application package."""
+
