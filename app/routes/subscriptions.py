@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 
@@ -99,6 +99,18 @@ def save(
     pix_category: str = Form("Assinatura"),
     session: Session = Depends(get_session),
 ):
+    if payment_method not in {"card", "pix"}:
+        raise HTTPException(status_code=400, detail="Método de pagamento inválido.")
+    if amount_monthly <= 0:
+        raise HTTPException(status_code=400, detail="Valor mensal deve ser maior que zero.")
+    if billing_day < 1 or billing_day > 31:
+        raise HTTPException(status_code=400, detail="Dia de cobrança inválido.")
+    if payment_method == "card":
+        if not card_id:
+            raise HTTPException(status_code=400, detail="Assinatura em cartão exige cartão vinculado.")
+        if session.get(Card, card_id) is None:
+            raise HTTPException(status_code=400, detail="Cartão vinculado não existe.")
+
     sub = session.get(Subscription, sub_id) if sub_id else None
     if sub is None:
         sub = Subscription(description=description, amount_monthly=amount_monthly, billing_day=billing_day, start_month=0, start_year=2024)
@@ -123,8 +135,13 @@ def save(
         sub.duration_months = None
         sub.end_year = None
         sub.end_month = None
+    else:
+        if sub.duration_months is None and (sub.end_year is None or sub.end_month is None):
+            raise HTTPException(status_code=400, detail="Defina duração em meses ou data final para assinaturas não indefinidas.")
+    if payment_method == "pix":
+        sub.card_id = None
     sub.pix_category = pix_category
-    sub.updated_at = datetime.utcnow()
+    sub.updated_at = datetime.now(UTC)
     session.add(sub)
     session.commit()
 

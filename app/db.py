@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Generator
 
+from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.models import AppSettings
@@ -15,6 +16,13 @@ engine = create_engine(
     echo=False,
     connect_args={"check_same_thread": False},
 )
+
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, _connection_record) -> None:
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 def init_db() -> None:

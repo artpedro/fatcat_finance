@@ -19,8 +19,8 @@ def _now() -> datetime:
 class AppSettings(SQLModel, table=True):
     id: int | None = Field(default=1, primary_key=True)
     theme: str = Field(default="dark")
-    selected_month: int = Field(default_factory=lambda: datetime.utcnow().month - 1)
-    selected_year: int = Field(default_factory=lambda: datetime.utcnow().year)
+    selected_month: int = Field(default_factory=lambda: datetime.now(UTC).month - 1)
+    selected_year: int = Field(default_factory=lambda: datetime.now(UTC).year)
 
 
 class IncomeSource(SQLModel, table=True):

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 
@@ -108,10 +108,21 @@ def save_expense(
     category: str = Form("Outros"),
     session: Session = Depends(get_session),
 ):
+    if exp_type not in {"credit", "debit"}:
+        raise HTTPException(status_code=400, detail="Tipo de lançamento inválido.")
+    card = session.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=400, detail="Cartão obrigatório e deve existir.")
+    if amount_total <= 0:
+        raise HTTPException(status_code=400, detail="Valor deve ser maior que zero.")
+    try:
+        date_obj = datetime.strptime(purchase_date, "%Y-%m-%d")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Data de compra inválida.") from exc
+
     expense = session.get(Expense, expense_id) if expense_id else None
     if expense is None:
         expense = Expense(type=exp_type, card_id=card_id, description=description, amount_total=amount_total, purchase_day=1, purchase_month=0, purchase_year=2024)
-    date_obj = datetime.strptime(purchase_date, "%Y-%m-%d")
     expense.description = description.strip()
     expense.type = exp_type
     expense.card_id = card_id
@@ -121,7 +132,7 @@ def save_expense(
     expense.purchase_month = date_obj.month - 1
     expense.purchase_year = date_obj.year
     expense.category = category
-    expense.updated_at = datetime.utcnow()
+    expense.updated_at = datetime.now(UTC)
     session.add(expense)
     session.commit()
     settings = get_settings(session)
