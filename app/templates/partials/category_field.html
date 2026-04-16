@@ -1,0 +1,25 @@
+<div id="{{ wrap_id }}" data-category-wrap class="text-sm md:col-span-2">
+  <label><span class="fg-label">Categoria</span>
+    <select class="mt-1" name="category_id" required onchange="fatcatToggleNewCategory(this)">
+      {% for c in categories %}
+        <option value="{{ c.id }}" {% if selected_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+      <option value="__new__">+ Nova categoria…</option>
+    </select>
+  </label>
+  <div class="js-new-category-prompt hidden new-cat-prompt" id="new-cat-prompt-{{ wrap_id }}">
+    <p class="hint">Somente o nome é necessário.</p>
+    <div class="new-cat-actions">
+      <label class="new-cat-name-field"><span class="fg-label">Nome</span>
+        <input type="text" autocomplete="off" class="mt-1" id="new-cat-name-{{ wrap_id }}" placeholder="Ex.: Pets">
+      </label>
+      <button type="button" class="btn btn-primary"
+              hx-post="/categories/quick-create"
+              hx-target="#{{ wrap_id }}"
+              hx-swap="innerHTML"
+              hx-vals='js:{"name": document.getElementById("new-cat-name-{{ wrap_id }}").value, "wrap_id": "{{ wrap_id }}"}'>
+        Criar
+      </button>
+    </div>
+  </div>
+</div>

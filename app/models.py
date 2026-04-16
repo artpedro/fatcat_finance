@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import CheckConstraint, Column, String
+from sqlalchemy import CheckConstraint, Column, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -40,6 +40,15 @@ class IncomeSource(SQLModel, table=True):
     end_month: int | None = None
     end_year: int | None = None
     notes: str = ""
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class Category(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("name", name="uq_category_name"),)
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    name: str = Field(index=True)
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -84,7 +93,7 @@ class Expense(SQLModel, table=True):
     purchase_day: int
     purchase_month: int
     purchase_year: int
-    category: str = Field(default="Outros")
+    category_id: str = Field(foreign_key="category.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -115,7 +124,7 @@ class Subscription(SQLModel, table=True):
     is_indefinite: bool = Field(default=True)
     payment_method: str = Field(default="card")
     card_id: str | None = Field(default=None, foreign_key="card.id")
-    pix_category: str = Field(default="Assinatura")
+    category_id: str = Field(foreign_key="category.id")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -129,7 +138,7 @@ class PixItem(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     description: str
     amount: float
-    category: str = Field(default="Assinatura")
+    category_id: str = Field(foreign_key="category.id")
     is_recurring: bool = Field(default=False)
     start_month: int
     start_year: int

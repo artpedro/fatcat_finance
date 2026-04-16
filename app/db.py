@@ -27,6 +27,10 @@ def _set_sqlite_pragma(dbapi_connection, _connection_record) -> None:
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
+    from app.db_migrate import migrate_category_columns, normalize_pixitem_recurring
+
+    migrate_category_columns(engine)
+    normalize_pixitem_recurring(engine)
     with Session(engine) as session:
         settings = session.exec(select(AppSettings)).first()
         if settings is None:

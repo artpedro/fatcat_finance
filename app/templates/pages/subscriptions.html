@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Assinaturas - FatCat{% endblock %}
 {% block content %}
-<div class="space-y-4">
-  <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-black">Assinaturas</h2>
-    <button class="btn btn-primary" hx-get="/subscriptions/form?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">+ Nova assinatura</button>
+<div class="stack-gap">
+  <div class="ph">
+    <div>
+      <h2>Assinaturas</h2>
+      <p class="subtitle max-w-xl">Compras recorrentes ou por tempo limitado. Cada mês ativo entra automaticamente em <a class="link-accent" href="/expenses?{{ query }}">Lançamentos</a>. PIX ou cartão é só o meio de pagamento.</p>
+    </div>
+    <button type="button" class="btn btn-primary" hx-get="/subscriptions/form?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">+ Nova assinatura</button>
   </div>
   <div id="sub-form-wrap"></div>
   <div id="subscriptions-table-wrap">

@@ -1,11 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Lançamentos - FatCat{% endblock %}
 {% block content %}
-<div class="space-y-4">
-  <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-black">Lançamentos</h2>
-    <button class="btn btn-primary" hx-get="/expenses/form?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">+ Novo lançamento</button>
+<div class="stack-gap">
+  <div class="ph">
+    <div>
+      <h2>Lançamentos</h2>
+      <p class="subtitle max-w-xl">Compras no cartão, gastos PIX avulsos e assinaturas (cartão ou PIX). Use <strong>Exibir</strong> para combinar meio e tipo; nos modos só PIX o filtro de cartão fica indisponível.</p>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" hx-get="/expenses/form?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">+ Novo lançamento</button>
+      <button type="button" class="btn btn-ghost" hx-get="/subscriptions/form?{{ query }}&return_partial=expenses" hx-target="#expense-form-wrap" hx-swap="innerHTML">+ Nova assinatura</button>
+    </div>
   </div>
+  <form class="blk grid gap-3 md:grid-cols-2 lg:grid-cols-5" method="get" action="/expenses">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <label class="text-sm lg:col-span-2"><span class="fg-label">Exibir</span>
+      <select class="mt-1" name="f_pay" onchange="this.form.submit()">
+        <option value="" {% if not filter_pay %}selected{% endif %}>Todos</option>
+        <option value="pix_sub" {% if filter_pay == 'pix_sub' %}selected{% endif %}>PIX: Assinaturas</option>
+        <option value="pix_buy" {% if filter_pay == 'pix_buy' %}selected{% endif %}>PIX: Compras</option>
+        <option value="pix_all" {% if filter_pay == 'pix_all' %}selected{% endif %}>PIX: Compras + Assinaturas</option>
+        <option value="card_sub" {% if filter_pay == 'card_sub' %}selected{% endif %}>Cartões: Assinaturas</option>
+        <option value="card_buy" {% if filter_pay == 'card_buy' %}selected{% endif %}>Cartões: Compras</option>
+        <option value="card_all" {% if filter_pay == 'card_all' %}selected{% endif %}>Cartão: Compras + Assinaturas</option>
+      </select>
+    </label>
+    <label class="text-sm lg:col-span-2"><span class="fg-label">Cartão</span>
+      <select class="mt-1" name="f_card" onchange="this.form.submit()" {% if card_filter_disabled %}disabled{% endif %}>
+        <option value="">Todos</option>
+        {% for card in cards %}
+          <option value="{{ card.id }}" {% if filter_card == card.id %}selected{% endif %}>{{ card.name }}</option>
+        {% endfor %}
+      </select>
+      {% if card_filter_disabled %}
+      <input type="hidden" name="f_card" value="">
+      {% endif %}
+    </label>
+    <label class="text-sm"><span class="fg-label">Período</span>
+      <select class="mt-1" name="period" onchange="this.form.submit()">
+        <option value="month" {% if filter_period == 'month' %}selected{% endif %}>Mês selecionado</option>
+        <option value="all" {% if filter_period == 'all' %}selected{% endif %}>Todos os períodos</option>
+      </select>
+    </label>
+    <div class="filter-submit md:col-span-2 lg:col-span-5">
+      <button class="btn btn-ghost" type="submit">Aplicar filtros</button>
+    </div>
+  </form>
   <div id="expense-form-wrap"></div>
   <div id="expenses-table-wrap">
     {% include "partials/expenses_table.html" %}

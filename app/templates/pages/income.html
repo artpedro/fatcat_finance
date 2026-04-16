@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Receitas - FatCat{% endblock %}
 {% block content %}
-<div class="space-y-4">
-  <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-black">Fontes de Receita</h2>
-    <button class="btn btn-primary" hx-get="/income/form?{{ query }}" hx-target="#income-form-wrap" hx-swap="innerHTML">+ Nova receita</button>
+<div class="stack-gap">
+  <div class="ph">
+    <h2>Fontes de Receita</h2>
+    <button type="button" class="btn btn-primary" hx-get="/income/form?{{ query }}" hx-target="#income-form-wrap" hx-swap="innerHTML">+ Nova receita</button>
   </div>
   <div id="income-form-wrap"></div>
   <div id="income-table-wrap">

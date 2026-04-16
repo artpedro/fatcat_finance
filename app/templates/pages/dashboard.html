@@ -1,79 +1,92 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - FatCat{% endblock %}
 {% block content %}
-<div class="space-y-4">
-  <div>
-    <h2 class="text-2xl font-black">Visão Geral</h2>
-    <p class="text-zinc-400 text-sm">{{ month_full_label }}</p>
+<div class="stack-gap">
+  <div class="ph">
+    <div>
+      <h2>Visão Geral</h2>
+      <p>{{ month_full_label }}</p>
+    </div>
   </div>
-  <div class="grid md:grid-cols-4 gap-3">
-    <div class="metric">
-      <h4>Receitas</h4>
-      <p>{{ metrics.income_fmt }}</p>
+  <div class="g5">
+    <div class="mc">
+      <div class="lbl">Receitas</div>
+      <div class="val green">{{ metrics.income_fmt }}</div>
     </div>
-    <div class="metric">
-      <h4>Faturas cartões</h4>
-      <p>{{ metrics.cards_fmt }}</p>
+    <div class="mc">
+      <div class="lbl">Faturas cartões</div>
+      <div class="val red">{{ metrics.cards_fmt }}</div>
+      <div class="sub">Compras e assinaturas no cartão</div>
     </div>
-    <div class="metric">
-      <h4>PIX e Assinaturas</h4>
-      <p>{{ metrics.pix_fmt }}</p>
+    <div class="mc">
+      <div class="lbl">PIX avulso</div>
+      <div class="val amber">{{ metrics.pix_adhoc_fmt }}</div>
+      <div class="sub">Transferências, sem vínculo com cartão</div>
     </div>
-    <div class="metric">
-      <h4>Saldo restante</h4>
-      <p class="{% if metrics.balance >= 0 %}text-emerald-400{% else %}text-rose-300{% endif %}">{{ metrics.balance_fmt }}</p>
+    <div class="mc">
+      <div class="lbl">Compras (PIX)</div>
+      <div class="val amber">{{ metrics.subscription_pix_fmt }}</div>
+      <div class="sub">Assinaturas e compras fixas pagas em PIX</div>
+    </div>
+    <div class="mc">
+      <div class="lbl">Saldo restante</div>
+      <div class="val {% if metrics.balance >= 0 %}green{% else %}red{% endif %}">{{ metrics.balance_fmt }}</div>
     </div>
   </div>
 
-  <div class="grid lg:grid-cols-2 gap-4">
-    <div class="card">
-      <h3 class="font-bold mb-2">Gastos por origem</h3>
-      <canvas id="cardChart" height="220"></canvas>
+  <div class="g2">
+    <div class="blk">
+      <h3>Gastos por origem</h3>
+      <div class="chart-wrap chart-240">
+        <canvas id="cardChart"></canvas>
+      </div>
       <script id="card-chart-data" type="application/json">{{ chart_card|tojson }}</script>
     </div>
-    <div class="card">
-      <h3 class="font-bold mb-2">Gastos por categoria</h3>
-      <canvas id="catChart" height="220"></canvas>
+    <div class="blk">
+      <h3>Gastos por categoria</h3>
+      <div class="chart-wrap chart-240">
+        <canvas id="catChart"></canvas>
+      </div>
       <script id="cat-chart-data" type="application/json">{{ chart_cat|tojson }}</script>
     </div>
   </div>
 
-  <div class="card">
-    <h3 class="font-bold mb-2">Fluxo de dinheiro</h3>
-    <div id="sankey-wrap" class="w-full overflow-x-auto"></div>
+  <div class="blk">
+    <h3>Fluxo de dinheiro</h3>
+    <div id="sankey-wrap" class="tw w-full"></div>
     <script id="sankey-data" type="application/json">{{ sankey|tojson }}</script>
   </div>
 
-  <div class="grid lg:grid-cols-2 gap-4">
-    <div class="card">
-      <h3 class="font-bold mb-3">Detalhamento por cartão</h3>
-      <div class="space-y-3">
+  <div class="g2">
+    <div class="blk">
+      <h3>Detalhamento por cartão</h3>
+      <div class="stack-gap">
         {% for row in breakdown %}
           <div>
-            <div class="flex justify-between text-sm">
+            <div class="row-split">
               <span>{{ row.name }}</span>
               <span>{{ row.total_fmt }}</span>
             </div>
-            <div class="h-2 bg-zinc-800 rounded mt-1"><div class="h-2 rounded" style="width: {{ row.pct }}%; background: {{ row.color }}"></div></div>
+            <div class="prog-wrap"><div class="prog-fill" style="width: {{ row.pct }}%; background: {{ row.color }}"></div></div>
           </div>
         {% else %}
-          <p class="text-zinc-400 text-sm">Nenhum gasto neste mês.</p>
+          <p class="text-muted text-sm">Nenhum gasto neste mês.</p>
         {% endfor %}
       </div>
     </div>
-    <div class="card">
-      <h3 class="font-bold mb-3">Vencimentos</h3>
-      <div class="grid gap-2">
+    <div class="blk">
+      <h3>Vencimentos</h3>
+      <div class="due-grid">
         {% for due in due_cards %}
-          <div class="rounded border border-zinc-700 p-2">
-            <div class="text-sm font-bold">{{ due.name }}</div>
-            <div class="text-xs text-zinc-400">{{ due.amount_fmt }}</div>
-            <div class="text-xs {% if due.state == 'overdue' %}text-rose-300{% elif due.state == 'soon' %}text-amber-300{% else %}text-zinc-400{% endif %}">
+          <div class="due-card">
+            <div class="due-name">{{ due.name }}</div>
+            <div class="due-amt">{{ due.amount_fmt }}</div>
+            <div class="due-date {% if due.state == 'overdue' %}overdue{% elif due.state == 'soon' %}soon{% else %}ok{% endif %}">
               Dia {{ due.day }} · {{ due.label }}
             </div>
           </div>
         {% else %}
-          <p class="text-zinc-400 text-sm">Nenhum cartão cadastrado.</p>
+          <p class="text-muted text-sm">Nenhum cartão cadastrado.</p>
         {% endfor %}
       </div>
     </div>

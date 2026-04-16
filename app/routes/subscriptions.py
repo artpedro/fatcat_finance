@@ -6,13 +6,59 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 
+from app.category_utils import parse_category_id
 from app.db import get_session
+from app.form_dates import month_year_to_date_iso, parse_iso_date_to_month_year
 from app.models import Card, Subscription
-from app.routes.common import base_context, current_period, get_settings
+from app.routes.categories import build_category_field
+from app.routes.common import base_context, get_settings, resolve_and_sync_period
+from app.routes.expenses import expenses_list_query
 from app.services.finance import fmt_month, is_subscription_active
 from app.templates import brl, templates
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
+
+
+def _subscription_form_context(
+    request: Request,
+    session: Session,
+    sub: Subscription | None,
+    start_date_iso: str,
+    end_date_iso: str,
+) -> dict:
+    settings = get_settings(session)
+    month, year = resolve_and_sync_period(request, session, settings)
+    cards = session.exec(select(Card)).all()
+    ctx = base_context(request, month, year, settings)
+    return_partial = request.query_params.get("return_partial", "")
+    if return_partial == "expenses":
+        form_hx_target = "#expenses-table-wrap"
+        form_cancel_target = "#expense-form-wrap"
+    else:
+        form_hx_target = "#subscriptions-table-wrap"
+        form_cancel_target = "#sub-form-wrap"
+    ctx.update(
+        {
+            "sub": sub,
+            "cards": cards,
+            "start_date_iso": start_date_iso,
+            "end_date_iso": end_date_iso,
+            "return_partial": return_partial,
+            "form_hx_target": form_hx_target,
+            "form_cancel_target": form_cancel_target,
+        }
+    )
+    ctx.update(
+        build_category_field(
+            session,
+            wrap_id="category-wrap-subscription",
+            selected_id=sub.category_id if sub else None,
+            default_name="Assinatura",
+        )
+    )
+    if return_partial == "expenses":
+        ctx["query"] = expenses_list_query(request, month, year)
+    return ctx
 
 
 def _rows(session: Session, month: int, year: int) -> tuple[list[dict], list[Card]]:
@@ -44,7 +90,7 @@ def _rows(session: Session, month: int, year: int) -> tuple[list[dict], list[Car
 @router.get("")
 def page(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     rows, cards = _rows(session, month, year)
     context = base_context(request, month, year, settings)
     context.update({"active": "subscriptions", "subscriptions_rows": rows, "cards": cards})
@@ -54,27 +100,24 @@ def page(request: Request, session: Session = Depends(get_session)):
 @router.get("/form")
 def form(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
-    cards = session.exec(select(Card)).all()
-    context = base_context(request, month, year, settings)
-    context.update({"sub": None, "cards": cards, "start_val": f"{year}-{month+1:02d}", "end_val": ""})
+    month, year = resolve_and_sync_period(request, session, settings)
+    start_date_iso = month_year_to_date_iso(year, month, 1)
+    context = _subscription_form_context(request, session, None, start_date_iso, "")
     return templates.TemplateResponse(request, "partials/subscription_form.html", context)
 
 
 @router.get("/form/{sub_id}")
 def form_edit(sub_id: str, request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
-    cards = session.exec(select(Card)).all()
+    month, year = resolve_and_sync_period(request, session, settings)
     sub = session.get(Subscription, sub_id)
-    start_val = ""
-    end_val = ""
+    start_date_iso = month_year_to_date_iso(year, month, 1)
+    end_date_iso = ""
     if sub:
-        start_val = f"{sub.start_year}-{sub.start_month + 1:02d}"
+        start_date_iso = month_year_to_date_iso(sub.start_year, sub.start_month, 1)
         if sub.end_month is not None and sub.end_year is not None:
-            end_val = f"{sub.end_year}-{sub.end_month + 1:02d}"
-    context = base_context(request, month, year, settings)
-    context.update({"sub": sub, "cards": cards, "start_val": start_val, "end_val": end_val})
+            end_date_iso = month_year_to_date_iso(sub.end_year, sub.end_month, 1)
+    context = _subscription_form_context(request, session, sub, start_date_iso, end_date_iso)
     return templates.TemplateResponse(request, "partials/subscription_form.html", context)
 
 
@@ -94,9 +137,9 @@ def save(
     card_id: str = Form(""),
     start: str = Form(...),
     end: str = Form(""),
-    duration_months: int | None = Form(None),
-    is_indefinite: str = Form("true"),
-    pix_category: str = Form("Assinatura"),
+    duration_months: str = Form(""),
+    category_id: str = Form(""),
+    return_partial: str = Form(""),
     session: Session = Depends(get_session),
 ):
     if payment_method not in {"card", "pix"}:
@@ -111,42 +154,87 @@ def save(
         if session.get(Card, card_id) is None:
             raise HTTPException(status_code=400, detail="Cartão vinculado não existe.")
 
+    try:
+        cid = parse_category_id(session, category_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     sub = session.get(Subscription, sub_id) if sub_id else None
     if sub is None:
-        sub = Subscription(description=description, amount_monthly=amount_monthly, billing_day=billing_day, start_month=0, start_year=2024)
-    sy, sm = start.split("-")
+        sub = Subscription(
+            description=description,
+            amount_monthly=amount_monthly,
+            billing_day=billing_day,
+            start_month=0,
+            start_year=2024,
+            category_id=cid,
+        )
+    try:
+        sm_start, sy_start = parse_iso_date_to_month_year(start)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Data de início inválida.") from exc
     sub.description = description.strip()
     sub.amount_monthly = float(amount_monthly)
     sub.billing_day = int(billing_day)
     sub.payment_method = payment_method
     sub.card_id = card_id or None
-    sub.start_year = int(sy)
-    sub.start_month = int(sm) - 1
-    sub.is_indefinite = is_indefinite.lower() == "true"
-    sub.duration_months = int(duration_months) if duration_months else None
-    if end:
-        ey, em = end.split("-")
-        sub.end_year = int(ey)
-        sub.end_month = int(em) - 1
-    else:
-        sub.end_year = None
-        sub.end_month = None
-    if sub.is_indefinite:
+    sub.start_year = sy_start
+    sub.start_month = sm_start
+
+    end_raw = (end or "").strip()
+    dur_raw = (duration_months or "").strip()
+    dur: int | None = None
+    if dur_raw:
+        try:
+            dur = int(dur_raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Duração em meses inválida.") from exc
+        if dur < 1:
+            raise HTTPException(status_code=400, detail="Duração deve ser pelo menos 1 mês.")
+
+    has_end = bool(end_raw)
+    has_dur = dur is not None
+
+    if has_end and has_dur:
+        raise HTTPException(
+            status_code=400,
+            detail="Preencha apenas a data final ou apenas a duração em meses.",
+        )
+
+    if not has_end and not has_dur:
+        sub.is_indefinite = True
         sub.duration_months = None
         sub.end_year = None
         sub.end_month = None
     else:
-        if sub.duration_months is None and (sub.end_year is None or sub.end_month is None):
-            raise HTTPException(status_code=400, detail="Defina duração em meses ou data final para assinaturas não indefinidas.")
+        sub.is_indefinite = False
+        if has_dur:
+            sub.duration_months = dur
+            sub.end_year = None
+            sub.end_month = None
+        else:
+            try:
+                em, ey = parse_iso_date_to_month_year(end_raw)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Data final inválida.") from exc
+            sub.end_month = em
+            sub.end_year = ey
+            sub.duration_months = None
     if payment_method == "pix":
         sub.card_id = None
-    sub.pix_category = pix_category
+    sub.category_id = cid
     sub.updated_at = datetime.now(UTC)
     session.add(sub)
     session.commit()
 
+    if return_partial == "expenses":
+        from app.routes.expenses import expenses_table_context
+
+        context = expenses_table_context(request, session)
+        return templates.TemplateResponse(request, "partials/expenses_table.html", context)
+
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     rows, _cards = _rows(session, month, year)
     context = base_context(request, month, year, settings)
     context.update({"subscriptions_rows": rows})
@@ -159,8 +247,14 @@ def delete(sub_id: str, request: Request, session: Session = Depends(get_session
     if sub:
         session.delete(sub)
         session.commit()
+    if request.query_params.get("partial") == "expenses":
+        from app.routes.expenses import expenses_table_context
+
+        context = expenses_table_context(request, session)
+        return templates.TemplateResponse(request, "partials/expenses_table.html", context)
+
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     rows, _cards = _rows(session, month, year)
     context = base_context(request, month, year, settings)
     context.update({"subscriptions_rows": rows})

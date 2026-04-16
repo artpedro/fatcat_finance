@@ -47,7 +47,7 @@ def is_income_active(source: IncomeSource, month: int, year: int) -> bool:
     current = mkey(month, year)
     if current < start:
         return False
-    if not source.is_recurring:
+    if not _truthy(source.is_recurring):
         return current == start
     if source.end_month is not None and source.end_year is not None:
         return current <= mkey(source.end_month, source.end_year)
@@ -63,7 +63,7 @@ def is_subscription_active(subscription: Subscription, month: int, year: int) ->
     start = mkey(subscription.start_month, subscription.start_year)
     if current < start:
         return False
-    if subscription.is_indefinite:
+    if _truthy(subscription.is_indefinite):
         return True
     if subscription.duration_months:
         return current <= start + subscription.duration_months - 1
@@ -76,12 +76,25 @@ def subscriptions_for_month(items: Iterable[Subscription], month: int, year: int
     return [s for s in items if is_subscription_active(s, month, year)]
 
 
+def _truthy(value: object) -> bool:
+    """Normalize bool-like values from SQLite/drivers (0/1, strings, None)."""
+    if value is True:
+        return True
+    if value is False or value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
 def pix_for_month(items: Iterable[PixItem], month: int, year: int) -> list[PixItem]:
     current = mkey(month, year)
     result: list[PixItem] = []
     for pix in items:
         start = mkey(pix.start_month, pix.start_year)
-        if pix.is_recurring:
+        if _truthy(pix.is_recurring):
             if current >= start:
                 result.append(pix)
         elif current == start:

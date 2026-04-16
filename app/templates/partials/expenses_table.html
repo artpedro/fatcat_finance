@@ -1,12 +1,13 @@
-<div class="card overflow-x-auto">
+<div class="card tw">
   <table>
     <thead>
       <tr>
         <th>Descrição</th>
-        <th>Tipo</th>
+        <th>Compra</th>
+        <th>Meio de pagamento</th>
         <th>Cartão</th>
-        <th>Total</th>
-        <th>Mês atual</th>
+        <th>Total / mês</th>
+        <th>Neste mês</th>
         <th>Status</th>
         <th>Categoria</th>
         <th>Ações</th>
@@ -15,20 +16,36 @@
     <tbody>
       {% for row in expense_rows %}
       <tr>
-        <td>{{ row.expense.description }}</td>
-        <td><span class="badge {% if row.expense.type == 'credit' %}bg-blue-900{% else %}bg-emerald-900{% endif %}">{{ row.expense.type }}</span></td>
-        <td>{{ cards_map.get(row.expense.card_id, "—") }}</td>
+        <td style="font-weight:700">{{ row.description }}</td>
+        <td>
+          {% if row.purchase_type == 'subscription' %}
+            <span class="badge bg-rose">Assinatura</span>
+          {% elif row.purchase_type == 'pix_item' %}
+            <span class="badge bg-amber">PIX avulso</span>
+          {% elif row.purchase_type == 'credit' %}
+            <span class="badge bg-blue">Crédito</span>
+          {% else %}
+            <span class="badge bg-green">Débito</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px">{{ row.payment_label }}</td>
+        <td>{{ row.card_short }}</td>
         <td>{{ row.total_fmt }}</td>
         <td>{{ row.month_fmt }}</td>
         <td>{{ row.status }}</td>
-        <td>{{ row.expense.category }}</td>
-        <td>
-          <button class="btn" hx-get="/expenses/form/{{ row.expense.id }}?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">Editar</button>
-          <button class="btn btn-danger" hx-delete="/expenses/{{ row.expense.id }}?{{ query }}" hx-target="#expenses-table-wrap" hx-swap="innerHTML">Excluir</button>
+        <td><span class="badge bg-gray">{{ row.category }}</span></td>
+        <td style="white-space:nowrap">
+          {% if row.kind == 'expense' and row.expense %}
+            <button type="button" class="btn btn-ghost btn-sm" hx-get="/expenses/form/{{ row.expense.id }}?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">Editar</button>
+            <button type="button" class="btn btn-danger btn-sm" hx-delete="/expenses/{{ row.expense.id }}?{{ query }}" hx-target="#expenses-table-wrap" hx-swap="innerHTML">×</button>
+          {% elif row.kind == 'subscription' and row.subscription %}
+            <button type="button" class="btn btn-ghost btn-sm" hx-get="/subscriptions/form/{{ row.subscription.id }}?{{ query }}&return_partial=expenses" hx-target="#expense-form-wrap" hx-swap="innerHTML">Editar</button>
+            <button type="button" class="btn btn-danger btn-sm" hx-delete="/subscriptions/{{ row.subscription.id }}?{{ query }}&partial=expenses" hx-target="#expenses-table-wrap" hx-swap="innerHTML">×</button>
+          {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8">Nenhum lançamento encontrado.</td></tr>
+      <tr><td colspan="9">Nenhum lançamento encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>

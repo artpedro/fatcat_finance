@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models import Card, Expense, Subscription
-from app.routes.common import base_context, current_period, get_settings
+from app.routes.common import base_context, get_settings, resolve_and_sync_period
 from app.services.finance import card_total, expenses_for_month, outstanding_for_card, subscription_costs_by_method
 from app.templates import brl, templates
 
@@ -44,7 +44,7 @@ def _rows(session: Session, month: int, year: int) -> list[dict]:
 @router.get("")
 def cards_page(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)
     context.update({"active": "cards", "cards_rows": _rows(session, month, year)})
     return templates.TemplateResponse(request, "pages/cards.html", context)
@@ -53,7 +53,7 @@ def cards_page(request: Request, session: Session = Depends(get_session)):
 @router.get("/form")
 def card_form(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)
     context.update({"card": None})
     return templates.TemplateResponse(request, "partials/card_form.html", context)
@@ -62,7 +62,7 @@ def card_form(request: Request, session: Session = Depends(get_session)):
 @router.get("/form/{card_id}")
 def card_form_edit(card_id: str, request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     card = session.get(Card, card_id)
     context = base_context(request, month, year, settings)
     context.update({"card": card})
@@ -101,7 +101,7 @@ def save_card(
     session.add(card)
     session.commit()
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)
     context.update({"cards_rows": _rows(session, month, year)})
     return templates.TemplateResponse(request, "partials/cards_table.html", context)
@@ -121,7 +121,7 @@ def delete_card(card_id: str, request: Request, session: Session = Depends(get_s
         session.delete(card)
         session.commit()
     settings = get_settings(session)
-    month, year = current_period(request, settings)
+    month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)
     context.update({"cards_rows": _rows(session, month, year)})
     return templates.TemplateResponse(request, "partials/cards_table.html", context)

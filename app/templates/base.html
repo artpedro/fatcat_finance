@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FatCat{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -13,33 +14,55 @@
   <script defer src="/static/js/ui.js"></script>
   <script defer src="/static/js/charts.js"></script>
 </head>
-<body class="bg-zinc-950 text-zinc-100">
-  <div class="min-h-screen flex">
-    <aside class="w-64 bg-zinc-900 border-r border-zinc-800 p-4 flex flex-col gap-5">
-      <div>
-        <h1 class="text-2xl font-black text-rose-300">FatCat</h1>
-        <p class="text-xs text-zinc-400">Controle Financeiro</p>
+<body>
+  <div class="app">
+    <aside class="sb">
+      <div class="sb-logo">
+        <img class="logo-for-light" src="/static/img/logo-light.png" width="140" alt="FatCat">
+        <img class="logo-for-dark" src="/static/img/logo-dark.png" width="140" alt="FatCat">
       </div>
-      <nav class="space-y-1">
-        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="/dashboard?{{ query }}">Dashboard</a>
-        <a class="nav-link {% if active == 'cards' %}active{% endif %}" href="/cards?{{ query }}">Cartões</a>
-        <a class="nav-link {% if active == 'expenses' %}active{% endif %}" href="/expenses?{{ query }}">Lançamentos</a>
-        <a class="nav-link {% if active == 'subscriptions' %}active{% endif %}" href="/subscriptions?{{ query }}">Assinaturas</a>
-        <a class="nav-link {% if active == 'pix' %}active{% endif %}" href="/pix?{{ query }}">PIX</a>
-        <a class="nav-link {% if active == 'income' %}active{% endif %}" href="/income?{{ query }}">Receitas</a>
+      <nav class="sb-nav">
+        <a class="nb {% if active == 'dashboard' %}active{% endif %}" href="/dashboard?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </a>
+        <a class="nb {% if active == 'cards' %}active{% endif %}" href="/cards?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Cartões
+        </a>
+        <a class="nb {% if active == 'expenses' %}active{% endif %}" href="/expenses?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+          Lançamentos
+        </a>
+        <a class="nb {% if active == 'subscriptions' %}active{% endif %}" href="/subscriptions?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Assinaturas
+        </a>
+        <a class="nb {% if active == 'income' %}active{% endif %}" href="/income?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Receitas
+        </a>
+        <a class="nb {% if active == 'categories' %}active{% endif %}" href="/categories?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Categorias
+        </a>
       </nav>
-      <div class="mt-auto space-y-3">
-        <div class="flex items-center justify-between rounded-lg border border-zinc-700 p-2">
-          <a href="/settings/month?delta=-1&path={{ request.url.path }}" class="px-2 py-1 rounded bg-zinc-800">◀</a>
-          <span class="font-semibold">{{ month_label }}</span>
-          <a href="/settings/month?delta=1&path={{ request.url.path }}" class="px-2 py-1 rounded bg-zinc-800">▶</a>
+      <div class="sb-foot">
+        <div class="sb-lbl">Mês de referência</div>
+        <div class="month-row">
+          <a href="/settings/month?delta=-1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Mês anterior">◀</a>
+          <span>{{ month_label }}</span>
+          <a href="/settings/month?delta=1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Próximo mês">▶</a>
         </div>
-        <form method="post" action="/settings/theme?path={{ request.url.path }}&month={{ month }}&year={{ year }}">
-          <button class="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm">Alternar tema</button>
+        <form method="post" action="/settings/theme?path={{ request.url.path }}&amp;{{ query|e }}">
+          <button type="submit" class="theme-btn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Alternar tema
+          </button>
         </form>
       </div>
     </aside>
-    <main class="flex-1 p-6">
+    <main class="main">
       {% block content %}{% endblock %}
     </main>
   </div>

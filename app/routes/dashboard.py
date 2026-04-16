@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
+from app.category_utils import category_map_by_id
 from app.db import get_session
 from app.models import Card, Expense, IncomeSource, PixItem, Subscription
-from app.routes.common import base_context, current_period, get_settings
+from app.routes.common import base_context, get_settings, resolve_and_sync_period
 from app.services.finance import (
     card_total,
     due_urgency,
@@ -28,11 +29,7 @@ def root() -> RedirectResponse:
 @router.get("/dashboard")
 def dashboard(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
-    month, year = current_period(request, settings)
-    settings.selected_month = month
-    settings.selected_year = year
-    session.add(settings)
-    session.commit()
+    month, year = resolve_and_sync_period(request, session, settings)
 
     cards = session.exec(select(Card)).all()
     expenses = session.exec(select(Expense)).all()
@@ -53,8 +50,10 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
         cards_total += total
         card_rows.append({"card": card, "total": total})
 
-    pix_total = sum(item.amount for item in month_pix) + sum(item.amount_monthly for item in pix_subs)
-    balance = income_total - cards_total - pix_total
+    pix_adhoc_total = sum(item.amount for item in month_pix)
+    subscription_pix_total = sum(sub.amount_monthly for sub in pix_subs)
+    pix_total_out = pix_adhoc_total + subscription_pix_total
+    balance = income_total - cards_total - pix_adhoc_total - subscription_pix_total
 
     chart_card_labels: list[str] = []
     chart_card_values: list[float] = []
@@ -65,19 +64,25 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
         chart_card_labels.append(row["card"].name)
         chart_card_values.append(round(row["total"], 2))
         chart_card_colors.append(row["card"].color or "#DB8A74")
-    if pix_total > 0:
-        chart_card_labels.append("PIX & Assinaturas")
-        chart_card_values.append(round(pix_total, 2))
+    if pix_adhoc_total > 0:
+        chart_card_labels.append("PIX avulso")
+        chart_card_values.append(round(pix_adhoc_total, 2))
         chart_card_colors.append("#E4A840")
+    if subscription_pix_total > 0:
+        chart_card_labels.append("Assinaturas (PIX)")
+        chart_card_values.append(round(subscription_pix_total, 2))
+        chart_card_colors.append("#F0C060")
 
+    cat_names = category_map_by_id(session)
     cat_totals: dict[str, float] = {}
     for row in month_exp:
-        cat = row["expense"].category or "Outros"
+        cat = cat_names.get(row["expense"].category_id, "Outros")
         cat_totals[cat] = cat_totals.get(cat, 0.0) + row["month_amount"]
     for item in month_pix:
-        cat_totals[item.category] = cat_totals.get(item.category, 0.0) + item.amount
+        cat = cat_names.get(item.category_id, "Outros")
+        cat_totals[cat] = cat_totals.get(cat, 0.0) + item.amount
     for sub in pix_subs:
-        cat = sub.pix_category or "Assinatura"
+        cat = cat_names.get(sub.category_id, "Assinatura")
         cat_totals[cat] = cat_totals.get(cat, 0.0) + sub.amount_monthly
     chart_cat_labels = list(cat_totals.keys())
     chart_cat_values = [round(cat_totals[name], 2) for name in chart_cat_labels]
@@ -113,11 +118,14 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
             "metrics": {
                 "income": income_total,
                 "cards": cards_total,
-                "pix": pix_total,
+                "pix_adhoc": pix_adhoc_total,
+                "subscription_pix": subscription_pix_total,
+                "pix_total_out": pix_total_out,
                 "balance": balance,
                 "income_fmt": brl(income_total),
                 "cards_fmt": brl(cards_total),
-                "pix_fmt": brl(pix_total),
+                "pix_adhoc_fmt": brl(pix_adhoc_total),
+                "subscription_pix_fmt": brl(subscription_pix_total),
                 "balance_fmt": brl(balance),
             },
             "chart_card": {"labels": chart_card_labels, "values": chart_card_values, "colors": chart_card_colors},

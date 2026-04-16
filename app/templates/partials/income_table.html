@@ -1,4 +1,4 @@
-<div class="card overflow-x-auto">
+<div class="card tw">
   <table>
     <thead>
       <tr>
@@ -21,10 +21,10 @@
         <td>{{ row.start }}</td>
         <td>{{ row.end }}</td>
         <td>{% if row.source.is_recurring %}Sim{% else %}Não{% endif %}</td>
-        <td>{% if row.active %}<span class="badge bg-emerald-900">Ativa</span>{% else %}<span class="badge bg-zinc-700">Inativa</span>{% endif %}</td>
+        <td>{% if row.active %}<span class="badge bg-green">Ativa</span>{% else %}<span class="badge bg-gray">Inativa</span>{% endif %}</td>
         <td>
-          <button class="btn" hx-get="/income/form/{{ row.source.id }}?{{ query }}" hx-target="#income-form-wrap" hx-swap="innerHTML">Editar</button>
-          <button class="btn btn-danger" hx-delete="/income/{{ row.source.id }}?{{ query }}" hx-target="#income-table-wrap" hx-swap="innerHTML">Excluir</button>
+          <button type="button" class="btn btn-ghost btn-sm" hx-get="/income/form/{{ row.source.id }}?{{ query }}" hx-target="#income-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button type="button" class="btn btn-danger btn-sm" hx-delete="/income/{{ row.source.id }}?{{ query }}" hx-target="#income-table-wrap" hx-swap="innerHTML">Excluir</button>
         </td>
       </tr>
       {% else %}

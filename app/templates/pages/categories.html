@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Categorias - FatCat{% endblock %}
+{% block content %}
+<div class="stack-gap">
+  <div class="ph">
+    <div>
+      <h2>Categorias</h2>
+      <p>Crie, renomeie ou exclua categorias. Itens que usavam uma categoria excluída passam para <strong>Outros</strong>.</p>
+    </div>
+  </div>
+  <div id="categories-table-wrap">
+    {% include "partials/categories_table.html" %}
+  </div>
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-<div class="card overflow-x-auto">
+<div class="card tw">
   <table>
     <thead>
       <tr>
@@ -17,10 +17,10 @@
         <td>{{ row.pay_label }}</td>
         <td>{{ row.amount_fmt }}</td>
         <td>{{ row.period }}</td>
-        <td>{% if row.active %}<span class="badge bg-emerald-900">Ativa</span>{% else %}<span class="badge bg-zinc-700">Inativa</span>{% endif %}</td>
+        <td>{% if row.active %}<span class="badge bg-green">Ativa</span>{% else %}<span class="badge bg-gray">Inativa</span>{% endif %}</td>
         <td>
-          <button class="btn" hx-get="/subscriptions/form/{{ row.sub.id }}?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">Editar</button>
-          <button class="btn btn-danger" hx-delete="/subscriptions/{{ row.sub.id }}?{{ query }}" hx-target="#subscriptions-table-wrap" hx-swap="innerHTML">Excluir</button>
+          <button type="button" class="btn btn-ghost btn-sm" hx-get="/subscriptions/form/{{ row.sub.id }}?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">Editar</button>
+          <button type="button" class="btn btn-danger btn-sm" hx-delete="/subscriptions/{{ row.sub.id }}?{{ query }}" hx-target="#subscriptions-table-wrap" hx-swap="innerHTML">Excluir</button>
         </td>
       </tr>
       {% else %}

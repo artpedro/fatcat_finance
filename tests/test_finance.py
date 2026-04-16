@@ -1,4 +1,8 @@
+from types import SimpleNamespace
+
 from app.models import Card, Expense, IncomeSource, PixItem, Subscription
+
+_CID = "0123456789abcdef0123456789abcdef"
 from app.services.finance import (
     billing_start,
     card_total,
@@ -20,7 +24,7 @@ def test_billing_rolls_after_closing_day():
         purchase_day=12,
         purchase_month=0,
         purchase_year=2026,
-        category="Outros",
+        category_id=_CID,
     )
     bm, by = billing_start(expense, card)
     assert (bm, by) == (1, 2026)
@@ -37,7 +41,7 @@ def test_credit_installment_projection_and_debit_month_rule():
         purchase_day=10,
         purchase_month=2,
         purchase_year=2026,
-        category="Educação",
+        category_id=_CID,
     )
     debit = Expense(
         type="debit",
@@ -48,7 +52,7 @@ def test_credit_installment_projection_and_debit_month_rule():
         purchase_day=5,
         purchase_month=3,
         purchase_year=2026,
-        category="Mercado",
+        category_id=_CID,
     )
     rows_mar = expenses_for_month([credit, debit], {card.id: card}, 2, 2026)
     rows_apr = expenses_for_month([credit, debit], {card.id: card}, 3, 2026)
@@ -72,18 +76,35 @@ def test_income_and_subscription_month_activity():
         is_indefinite=False,
         duration_months=3,
         payment_method="pix",
+        category_id=_CID,
     )
     assert is_subscription_active(sub, 1, 2026)
     assert not is_subscription_active(sub, 4, 2026)
 
 
 def test_pix_recurrence_rule():
-    recurring = PixItem(description="Gym", amount=120, start_month=1, start_year=2026, is_recurring=True)
-    one_off = PixItem(description="Gift", amount=300, start_month=2, start_year=2026, is_recurring=False)
+    recurring = PixItem(
+        description="Gym", amount=120, start_month=1, start_year=2026, is_recurring=True, category_id=_CID
+    )
+    one_off = PixItem(
+        description="Gift", amount=300, start_month=2, start_year=2026, is_recurring=False, category_id=_CID
+    )
     mar = pix_for_month([recurring, one_off], 2, 2026)
     apr = pix_for_month([recurring, one_off], 3, 2026)
     assert {x.description for x in mar} == {"Gym", "Gift"}
     assert {x.description for x in apr} == {"Gym"}
+
+
+def test_pix_one_off_with_sqlite_style_int_zero():
+    """SQLite may surface 0/1 integers; one-off must not repeat after start month."""
+    one_off = SimpleNamespace(start_month=2, start_year=2026, is_recurring=0, description="x")
+    assert len(pix_for_month([one_off], 2, 2026)) == 1
+    assert len(pix_for_month([one_off], 3, 2026)) == 0
+
+
+def test_pix_recurring_with_sqlite_style_int_one():
+    sub = SimpleNamespace(start_month=1, start_year=2026, is_recurring=1, description="x")
+    assert len(pix_for_month([sub], 6, 2026)) == 1
 
 
 def test_card_total_with_subscription_and_conditional_fee():
@@ -97,7 +118,7 @@ def test_card_total_with_subscription_and_conditional_fee():
         purchase_day=1,
         purchase_month=5,
         purchase_year=2026,
-        category="Outros",
+        category_id=_CID,
     )
     rows = expenses_for_month([expense], {card.id: card}, 5, 2026)
     sub = Subscription(
@@ -108,6 +129,7 @@ def test_card_total_with_subscription_and_conditional_fee():
         start_year=2026,
         payment_method="card",
         card_id=card.id,
+        category_id=_CID,
     )
     total = card_total(card, rows, [sub])
     assert round(total, 2) == 130.00

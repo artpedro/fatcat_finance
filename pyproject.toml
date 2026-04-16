@@ -1,0 +1,22 @@
+[project]
+name = "fatcat"
+version = "0.1.0"
+description = "Local personal finance organizer built with FastAPI, HTMX, Tailwind, and SQLite."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "jinja2",
+    "python-multipart",
+    "sqlmodel",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+    "httpx",
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

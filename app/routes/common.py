@@ -39,3 +39,14 @@ def base_context(request: Request, month: int, year: int, settings: AppSettings)
         "query": query,
     }
 
+
+def resolve_and_sync_period(request: Request, session: Session, settings: AppSettings) -> tuple[int, int]:
+    """Resolve month/year from URL or settings, then persist so HTMX POSTs without query stay aligned."""
+    month, year = current_period(request, settings)
+    if settings.selected_month != month or settings.selected_year != year:
+        settings.selected_month = month
+        settings.selected_year = year
+        session.add(settings)
+        session.commit()
+    return month, year
+

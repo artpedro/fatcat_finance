@@ -1,0 +1,40 @@
+<div class="card tw">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Renomear</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in categories %}
+      <tr>
+        <td style="font-weight:600">{{ c.name }}</td>
+        <td>
+          <form class="rename-row"
+                hx-post="/categories/{{ c.id }}/rename?{{ query }}"
+                hx-target="#categories-table-wrap"
+                hx-swap="innerHTML">
+            <input type="text" name="new_name" value="{{ c.name }}" required class="rename-input">
+            <button type="submit" class="btn btn-ghost btn-sm">Salvar nome</button>
+          </form>
+        </td>
+        <td>
+          {% if c.name == 'Outros' %}
+          <span class="hint">—</span>
+          {% else %}
+          <button type="button" class="btn btn-danger btn-sm"
+                  hx-delete="/categories/{{ c.id }}?{{ query }}"
+                  hx-target="#categories-table-wrap"
+                  hx-swap="innerHTML"
+                  hx-confirm="Excluir esta categoria? Lançamentos vinculados irão para Outros.">Excluir</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3">Nenhuma categoria.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
