@@ -144,6 +144,7 @@ def _rows(session: Session) -> list[dict]:
                 "has_history": any(paid_bills) or any(unpaid_bills),
                 "paid_count": len(paid_bills),
                 "unpaid_count": len(unpaid_bills),
+                "outstanding": outstanding,
                 "outstanding_fmt": brl(outstanding),
                 "limit_fmt": brl(card.limit_amount),
             }

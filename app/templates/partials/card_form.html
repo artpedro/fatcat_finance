@@ -1,24 +1,53 @@
-<form class="blk grid gap-3 md:grid-cols-3"
-      hx-post="/cards/save?{{ query }}"
-      hx-target="#cards-table-wrap"
-      hx-swap="innerHTML">
-  <input type="hidden" name="card_id" value="{{ card.id if card else '' }}">
-  <label class="text-sm"><span class="fg-label">Nome</span><input class="mt-1" name="name" required value="{{ card.name if card else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Fechamento</span><input class="mt-1" type="number" min="0" max="31" name="closing_day" value="{{ card.closing_day if card else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Vencimento</span><input class="mt-1" type="number" min="1" max="31" name="due_day" value="{{ card.due_day if card else 5 }}"></label>
-  <label class="text-sm"><span class="fg-label">Cor</span><input class="mt-1" type="color" name="color" value="{{ card.color if card else '#DB8A74' }}"></label>
-  <label class="text-sm"><span class="fg-label">Limite</span><input class="mt-1" type="number" step="0.01" min="0" name="limit_amount" value="{{ card.limit_amount if card else 0 }}"></label>
-  <label class="text-sm"><span class="fg-label">Taxa</span>
-    <select class="mt-1" name="maintenance_type">
-      {% set mt = card.maintenance_type if card else 'none' %}
-      <option value="none" {% if mt == 'none' %}selected{% endif %}>Sem taxa</option>
-      <option value="fixed" {% if mt == 'fixed' %}selected{% endif %}>Fixa</option>
-      <option value="conditional" {% if mt == 'conditional' %}selected{% endif %}>Condicional</option>
-    </select>
-  </label>
-  <label class="text-sm md:col-span-2"><span class="fg-label">Valor taxa</span><input class="mt-1" type="number" step="0.01" min="0" name="maintenance_amount" value="{{ card.maintenance_amount if card else 0 }}"></label>
-  <div class="form-actions md:col-span-3">
-    <button type="button" class="btn btn-ghost" hx-get="/cards/form-clear" hx-target="#card-form-wrap" hx-swap="innerHTML">Cancelar</button>
-    <button class="btn btn-primary" type="submit">Salvar cartão</button>
+<div class="mo open" data-modal-clear="/cards/form-clear" data-modal-target="#card-form-wrap" onclick="fatcatModalBackdrop(event, this)">
+  <div class="md">
+    <h3>{{ 'Editar cartão' if card else 'Novo cartão' }}</h3>
+    <form hx-post="/cards/save?{{ query }}"
+          hx-target="#cards-table-wrap"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) htmx.ajax('GET','/cards/form-clear',{target:'#card-form-wrap',swap:'innerHTML'})">
+      <input type="hidden" name="card_id" value="{{ card.id if card else '' }}">
+      <div class="fg">
+        <label>Nome do cartão</label>
+        <input type="text" name="name" required placeholder="Nubank, Itaú, Inter..." value="{{ card.name if card else '' }}">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Dia de fechamento</label>
+          <input type="number" min="0" max="31" name="closing_day" placeholder="Ex: 20" value="{{ card.closing_day if card else '' }}">
+        </div>
+        <div class="fg">
+          <label>Dia de vencimento</label>
+          <input type="number" min="1" max="31" name="due_day" placeholder="Ex: 5" value="{{ card.due_day if card else 5 }}">
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Limite (R$)</label>
+          <input type="number" step="0.01" min="0" name="limit_amount" placeholder="0.00" value="{{ card.limit_amount if card else 0 }}">
+        </div>
+        <div class="fg">
+          <label>Cor</label>
+          <input type="color" name="color" value="{{ card.color if card else '#DB8A74' }}">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Taxa de manutenção / anuidade parcelada</label>
+        <div class="fg-row3">
+          {% set mt = card.maintenance_type if card else 'none' %}
+          <select name="maintenance_type">
+            <option value="none" {% if mt == 'none' %}selected{% endif %}>Sem taxa</option>
+            <option value="fixed" {% if mt == 'fixed' %}selected{% endif %}>Fixa (sempre)</option>
+            <option value="conditional" {% if mt == 'conditional' %}selected{% endif %}>Condicional (só com parcelas)</option>
+          </select>
+          <div class="fg" style="margin:0;grid-column:span 2">
+            <input type="number" step="0.01" min="0" name="maintenance_amount" placeholder="R$ 0.00" value="{{ card.maintenance_amount if card else 0 }}">
+          </div>
+        </div>
+      </div>
+      <div class="ma">
+        <button type="button" class="btn btn-ghost" hx-get="/cards/form-clear" hx-target="#card-form-wrap" hx-swap="innerHTML">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar cartão</button>
+      </div>
+    </form>
   </div>
-</form>
+</div>

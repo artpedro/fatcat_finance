@@ -1,4 +1,5 @@
-<div class="card tw">
+{% if subscriptions_rows %}
+<div class="blk tw">
   <table>
     <thead>
       <tr>
@@ -23,9 +24,15 @@
           <button type="button" class="btn btn-danger btn-sm" hx-delete="/subscriptions/{{ row.sub.id }}?{{ query }}" hx-target="#subscriptions-table-wrap" hx-swap="innerHTML">Excluir</button>
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="6">Nenhuma assinatura cadastrada.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="blk">
+  <div class="empty">
+    <div class="empty-icon">🔁</div>
+    <p>Nenhuma assinatura cadastrada</p>
+  </div>
+</div>
+{% endif %}

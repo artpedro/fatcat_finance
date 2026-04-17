@@ -1,33 +1,63 @@
-<form class="blk grid gap-3 md:grid-cols-3"
-      data-income-form
-      hx-post="/income/save?{{ query }}"
-      hx-target="#income-table-wrap"
-      hx-swap="innerHTML">
-  <input type="hidden" name="income_id" value="{{ source.id if source else '' }}">
-  <label class="text-sm md:col-span-2"><span class="fg-label">Nome</span><input class="mt-1" name="name" required value="{{ source.name if source else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Valor</span><input class="mt-1" type="number" min="0" step="0.01" name="amount" required value="{{ source.amount if source else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Tipo</span><input class="mt-1" name="kind" value="{{ source.kind if source else 'salary' }}"></label>
-  <label class="text-sm"><span class="fg-label">Início da vigência</span>
-    <input class="mt-1" type="date" name="start" required value="{{ start_date_iso }}">
-    <span class="hint">Seletor de data (formato local no navegador).</span>
-  </label>
-  <label class="text-sm md:col-span-3 check-row">
-    <input type="checkbox" name="has_end" value="1" id="income-has-end" {% if income_has_end %}checked{% endif %} onchange="fatcatIncomeEndToggle(this)">
-    <span>Definir data de término <span class="text-muted font-normal">(se desmarcado, a receita não tem fim programado)</span></span>
-  </label>
-  <label class="text-sm md:col-span-2"><span class="fg-label">Término da vigência</span>
-    <input class="mt-1" type="date" name="end" id="income-end-date" value="{{ end_date_iso }}">
-    <span class="hint">Só vale quando a opção acima está marcada.</span>
-  </label>
-  <label class="text-sm"><span class="fg-label">Recorrente</span>
-    <select class="mt-1" name="is_recurring">
-      <option value="true" {% if not source or source.is_recurring %}selected{% endif %}>Sim</option>
-      <option value="false" {% if source and not source.is_recurring %}selected{% endif %}>Não</option>
-    </select>
-  </label>
-  <label class="text-sm md:col-span-3"><span class="fg-label">Notas</span><input class="mt-1" name="notes" value="{{ source.notes if source else '' }}"></label>
-  <div class="form-actions md:col-span-3">
-    <button type="button" class="btn btn-ghost" hx-get="/income/form-clear" hx-target="#income-form-wrap" hx-swap="innerHTML">Cancelar</button>
-    <button class="btn btn-primary" type="submit">Salvar receita</button>
+<div class="mo open" data-modal-clear="/income/form-clear" data-modal-target="#income-form-wrap" onclick="fatcatModalBackdrop(event, this)">
+  <div class="md">
+    <h3>{{ 'Editar receita' if source else 'Nova receita' }}</h3>
+    <form data-income-form
+          hx-post="/income/save?{{ query }}"
+          hx-target="#income-table-wrap"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) htmx.ajax('GET','/income/form-clear',{target:'#income-form-wrap',swap:'innerHTML'})">
+      <input type="hidden" name="income_id" value="{{ source.id if source else '' }}">
+      <div class="fg-row">
+        <div class="fg">
+          <label>Nome</label>
+          <input type="text" name="name" required placeholder="Salário, freela..." value="{{ source.name if source else '' }}">
+        </div>
+        <div class="fg">
+          <label>Valor (R$)</label>
+          <input type="number" min="0" step="0.01" name="amount" required placeholder="0.00" value="{{ source.amount if source else '' }}">
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Tipo</label>
+          <input type="text" name="kind" value="{{ source.kind if source else 'salary' }}">
+        </div>
+        <div class="fg">
+          <label>Recorrente</label>
+          <select name="is_recurring">
+            <option value="true" {% if not source or source.is_recurring %}selected{% endif %}>Sim</option>
+            <option value="false" {% if source and not source.is_recurring %}selected{% endif %}>Não</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Início da vigência</label>
+        <input type="date" name="start" required value="{{ start_date_iso }}">
+        <span class="hint">Seletor de data (formato local no navegador).</span>
+      </div>
+      <div class="fg">
+        <label>Término</label>
+        <div class="tog-row">
+          <label class="tog">
+            <input type="checkbox" name="has_end" value="1" id="income-has-end" {% if income_has_end %}checked{% endif %} onchange="fatcatIncomeEndToggle(this)">
+            <span class="tsl"></span>
+          </label>
+          <span class="hint">Definir data de término (se desmarcado, a receita não tem fim programado)</span>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Data de término</label>
+        <input type="date" name="end" id="income-end-date" value="{{ end_date_iso }}">
+        <span class="hint">Só vale quando a opção acima está marcada.</span>
+      </div>
+      <div class="fg">
+        <label>Notas</label>
+        <input type="text" name="notes" value="{{ source.notes if source else '' }}">
+      </div>
+      <div class="ma">
+        <button type="button" class="btn btn-ghost" hx-get="/income/form-clear" hx-target="#income-form-wrap" hx-swap="innerHTML">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar receita</button>
+      </div>
+    </form>
   </div>
-</form>
+</div>

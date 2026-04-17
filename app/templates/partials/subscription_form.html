@@ -1,47 +1,73 @@
-<form class="blk grid gap-3 md:grid-cols-3"
-      data-sub-term
-      hx-post="/subscriptions/save?{{ query }}"
-      hx-target="{{ form_hx_target }}"
-      hx-swap="innerHTML">
-  <input type="hidden" name="return_partial" value="{{ return_partial }}">
-  <input type="hidden" name="sub_id" value="{{ sub.id if sub else '' }}">
-  <label class="text-sm md:col-span-2"><span class="fg-label">Descrição</span><input class="mt-1" name="description" required value="{{ sub.description if sub else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Valor mensal</span><input class="mt-1" type="number" min="0.01" step="0.01" name="amount_monthly" required value="{{ sub.amount_monthly if sub else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Dia cobrança</span><input class="mt-1" type="number" min="1" max="31" name="billing_day" value="{{ sub.billing_day if sub else 5 }}"></label>
-  <label class="text-sm"><span class="fg-label">Pagamento</span>
-    {% set method = sub.payment_method if sub else 'card' %}
-    <select class="mt-1" name="payment_method">
-      <option value="card" {% if method == 'card' %}selected{% endif %}>Cartão</option>
-      <option value="pix" {% if method == 'pix' %}selected{% endif %}>PIX</option>
-    </select>
-  </label>
-  <label class="text-sm"><span class="fg-label">Cartão</span>
-    <select class="mt-1" name="card_id">
-      <option value="">—</option>
-      {% for card in cards %}
-      <option value="{{ card.id }}" {% if sub and sub.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="text-sm"><span class="fg-label">Início da vigência</span>
-    <input class="mt-1" type="date" name="start" required value="{{ start_date_iso }}">
-    <span class="hint">Use o seletor de data (o navegador exibe no formato local, ex. dd/mm/aaaa).</span>
-  </label>
-  <label class="text-sm"><span class="fg-label">Data final <span class="text-muted font-normal">(opcional)</span></span>
-    <input class="mt-1" type="date" name="end" value="{{ end_date_iso }}">
-    <span class="hint">Deixe vazio para assinatura sem término. Não preencha junto com duração em meses.</span>
-  </label>
-  <label class="text-sm"><span class="fg-label">Duração em meses <span class="text-muted font-normal">(opcional)</span></span>
-    <input class="mt-1" type="number" min="1" name="duration_months" placeholder="—" value="{{ sub.duration_months if sub and sub.duration_months else '' }}">
-    <span class="hint">Alternativa à data final. Deixe vazio se usar data ou vigência aberta.</span>
-  </label>
-  <label class="text-sm md:col-span-2"><span class="fg-label">Vigência</span>
-    <input type="text" readonly disabled class="mt-1 input-readonly" data-sub-term-status value="">
-    <span class="hint">Calculado automaticamente: sem data final e sem duração = indefinida.</span>
-  </label>
-  {% include "partials/category_field.html" %}
-  <div class="form-actions md:col-span-3">
-    <button type="button" class="btn btn-ghost" hx-get="/subscriptions/form-clear" hx-target="{{ form_cancel_target }}" hx-swap="innerHTML">Cancelar</button>
-    <button class="btn btn-primary" type="submit">Salvar assinatura</button>
+<div class="mo open" data-modal-clear="/subscriptions/form-clear" data-modal-target="{{ form_cancel_target }}" onclick="fatcatModalBackdrop(event, this)">
+  <div class="md">
+    <h3>{{ 'Editar assinatura' if sub else 'Nova assinatura' }}</h3>
+    <form data-sub-term
+          hx-post="/subscriptions/save?{{ query }}"
+          hx-target="{{ form_hx_target }}"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) htmx.ajax('GET','/subscriptions/form-clear',{target:'{{ form_cancel_target }}',swap:'innerHTML'})">
+      <input type="hidden" name="return_partial" value="{{ return_partial }}">
+      <input type="hidden" name="sub_id" value="{{ sub.id if sub else '' }}">
+      <div class="fg">
+        <label>Descrição</label>
+        <input type="text" name="description" required placeholder="Netflix, Spotify, academia..." value="{{ sub.description if sub else '' }}">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Valor mensal (R$)</label>
+          <input type="number" min="0.01" step="0.01" name="amount_monthly" required placeholder="0.00" value="{{ sub.amount_monthly if sub else '' }}">
+        </div>
+        <div class="fg">
+          <label>Dia de cobrança</label>
+          <input type="number" min="1" max="31" name="billing_day" value="{{ sub.billing_day if sub else 5 }}">
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Pagamento</label>
+          {% set method = sub.payment_method if sub else 'card' %}
+          <select name="payment_method">
+            <option value="card" {% if method == 'card' %}selected{% endif %}>Cartão</option>
+            <option value="pix" {% if method == 'pix' %}selected{% endif %}>PIX</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Cartão</label>
+          <select name="card_id">
+            <option value="">—</option>
+            {% for card in cards %}
+            <option value="{{ card.id }}" {% if sub and sub.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Início da vigência</label>
+        <input type="date" name="start" required value="{{ start_date_iso }}">
+        <span class="hint">Seletor de data (formato local no navegador).</span>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Data final <span class="hint">(opcional)</span></label>
+          <input type="date" name="end" value="{{ end_date_iso }}">
+          <span class="hint">Deixe vazio para assinatura sem término.</span>
+        </div>
+        <div class="fg">
+          <label>Duração em meses <span class="hint">(opcional)</span></label>
+          <input type="number" min="1" name="duration_months" placeholder="—" value="{{ sub.duration_months if sub and sub.duration_months else '' }}">
+          <span class="hint">Alternativa à data final.</span>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Vigência</label>
+        <input type="text" readonly disabled class="input-readonly" data-sub-term-status value="">
+        <span class="hint">Calculado automaticamente: sem data final e sem duração = indefinida.</span>
+      </div>
+      {% include "partials/category_field.html" %}
+      <div class="ma">
+        <button type="button" class="btn btn-ghost" hx-get="/subscriptions/form-clear" hx-target="{{ form_cancel_target }}" hx-swap="innerHTML">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar assinatura</button>
+      </div>
+    </form>
   </div>
-</form>
+</div>

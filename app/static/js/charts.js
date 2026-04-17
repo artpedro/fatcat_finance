@@ -22,6 +22,28 @@ function fatcatFormatMoneyBR(value) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
+function renderLegend(legendId, payload) {
+  const el = document.getElementById(legendId);
+  if (!el) return;
+  if (!payload || !payload.labels || payload.labels.length === 0) {
+    el.innerHTML = "";
+    return;
+  }
+  el.innerHTML = payload.labels
+    .map((label, i) => {
+      const color = (payload.colors && payload.colors[i]) || "#DB8A74";
+      return (
+        '<span class="leg-item">' +
+        '<span class="leg-sq" style="background:' +
+        color +
+        '"></span>' +
+        String(label) +
+        "</span>"
+      );
+    })
+    .join("");
+}
+
 function renderDoughnut(canvasId, payload, previous) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !payload || !payload.labels || payload.labels.length === 0) return previous;
@@ -127,5 +149,7 @@ window.fatcatRenderCharts = function fatcatRenderCharts() {
   const sankeyData = safeJsonElement("sankey-data");
   fatcatCardChart = renderDoughnut("cardChart", cardData, fatcatCardChart);
   fatcatCatChart = renderDoughnut("catChart", catData, fatcatCatChart);
+  renderLegend("leg-card", cardData);
+  renderLegend("leg-cat", catData);
   if (sankeyData) renderSankey(sankeyData);
 };

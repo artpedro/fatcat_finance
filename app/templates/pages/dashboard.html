@@ -37,6 +37,7 @@
   <div class="g2">
     <div class="blk">
       <h3>Gastos por origem</h3>
+      <div id="leg-card" class="leg"></div>
       <div class="chart-wrap chart-240">
         <canvas id="cardChart"></canvas>
       </div>
@@ -44,6 +45,7 @@
     </div>
     <div class="blk">
       <h3>Gastos por categoria</h3>
+      <div id="leg-cat" class="leg"></div>
       <div class="chart-wrap chart-240">
         <canvas id="catChart"></canvas>
       </div>
@@ -53,7 +55,7 @@
 
   <div class="blk">
     <h3>Fluxo de dinheiro</h3>
-    <div id="sankey-wrap" class="tw w-full"></div>
+    <div id="sankey-wrap" class="tw"></div>
     <script id="sankey-data" type="application/json">{{ sankey|tojson }}</script>
   </div>
 
@@ -70,7 +72,10 @@
             <div class="prog-wrap"><div class="prog-fill" style="width: {{ row.pct }}%; background: {{ row.color }}"></div></div>
           </div>
         {% else %}
-          <p class="text-muted text-sm">Nenhum gasto neste mês.</p>
+          <div class="empty">
+            <div class="empty-icon">📊</div>
+            <p>Nenhum gasto neste mês</p>
+          </div>
         {% endfor %}
       </div>
     </div>
@@ -86,7 +91,10 @@
             </div>
           </div>
         {% else %}
-          <p class="text-muted text-sm">Nenhum cartão cadastrado.</p>
+          <div class="empty">
+            <div class="empty-icon">💳</div>
+            <p>Nenhum cartão cadastrado</p>
+          </div>
         {% endfor %}
       </div>
     </div>

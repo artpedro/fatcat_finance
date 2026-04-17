@@ -1,32 +1,53 @@
-<form class="blk grid gap-3 md:grid-cols-3"
-      hx-post="/expenses/save?{{ query }}"
-      hx-target="#expenses-table-wrap"
-      hx-swap="innerHTML">
-  <input type="hidden" name="expense_id" value="{{ expense.id if expense else '' }}">
-  <label class="text-sm md:col-span-2"><span class="fg-label">Descrição</span><input class="mt-1" name="description" required value="{{ expense.description if expense else '' }}"></label>
-  <label class="text-sm"><span class="fg-label">Tipo</span>
-    {% set t = expense.type if expense else 'credit' %}
-    <select class="mt-1" name="exp_type" onchange="fatcatToggleType(this)">
-      <option value="credit" {% if t == 'credit' %}selected{% endif %}>Credit</option>
-      <option value="debit" {% if t == 'debit' %}selected{% endif %}>Debit</option>
-    </select>
-  </label>
-  <label class="text-sm"><span class="fg-label">Cartão</span>
-    <select class="mt-1" name="card_id" required>
-      {% for card in cards %}
-      <option value="{{ card.id }}" {% if expense and expense.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label class="text-sm"><span class="fg-label">Valor</span><input class="mt-1" type="number" min="0.01" step="0.01" name="amount_total" required value="{{ expense.amount_total if expense else '' }}"></label>
-  <label class="text-sm" id="installments-wrap"><span class="fg-label">Parcelas</span><input class="mt-1" type="number" min="1" max="60" name="installments" value="{{ expense.installments if expense else 1 }}"></label>
-  <label class="text-sm"><span class="fg-label">Data da compra</span>
-    <input class="mt-1" type="date" name="purchase_date" required value="{{ purchase_date }}">
-    <span class="hint">Calendário do navegador (exibição local, ex. dd/mm/aaaa).</span>
-  </label>
-  {% include "partials/category_field.html" %}
-  <div class="form-actions md:col-span-3">
-    <button type="button" class="btn btn-ghost" hx-get="/expenses/form-clear" hx-target="#expense-form-wrap" hx-swap="innerHTML">Cancelar</button>
-    <button class="btn btn-primary" type="submit">Salvar lançamento</button>
+<div class="mo open" data-modal-clear="/expenses/form-clear" data-modal-target="#expense-form-wrap" onclick="fatcatModalBackdrop(event, this)">
+  <div class="md">
+    <h3>{{ 'Editar lançamento' if expense else 'Novo lançamento' }}</h3>
+    <form hx-post="/expenses/save?{{ query }}"
+          hx-target="#expenses-table-wrap"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) htmx.ajax('GET','/expenses/form-clear',{target:'#expense-form-wrap',swap:'innerHTML'})">
+      <input type="hidden" name="expense_id" value="{{ expense.id if expense else '' }}">
+      <div class="fg">
+        <label>Descrição</label>
+        <input type="text" name="description" required placeholder="Supermercado, Sapatos, Restaurante..." value="{{ expense.description if expense else '' }}">
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Tipo</label>
+          {% set t = expense.type if expense else 'credit' %}
+          <select name="exp_type" onchange="fatcatToggleType(this)">
+            <option value="credit" {% if t == 'credit' %}selected{% endif %}>Crédito</option>
+            <option value="debit" {% if t == 'debit' %}selected{% endif %}>Débito</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Cartão</label>
+          <select name="card_id" required>
+            {% for card in cards %}
+            <option value="{{ card.id }}" {% if expense and expense.card_id == card.id %}selected{% endif %}>{{ card.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Valor total (R$)</label>
+          <input type="number" min="0.01" step="0.01" name="amount_total" required placeholder="0.00" value="{{ expense.amount_total if expense else '' }}">
+        </div>
+        <div class="fg" id="installments-wrap">
+          <label>Nº de parcelas</label>
+          <input type="number" min="1" max="60" name="installments" value="{{ expense.installments if expense else 1 }}">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Data da compra</label>
+        <input type="date" name="purchase_date" required value="{{ purchase_date }}">
+        <span class="hint">Calendário do navegador (exibição local, ex. dd/mm/aaaa).</span>
+      </div>
+      {% include "partials/category_field.html" %}
+      <div class="ma">
+        <button type="button" class="btn btn-ghost" hx-get="/expenses/form-clear" hx-target="#expense-form-wrap" hx-swap="innerHTML">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Salvar lançamento</button>
+      </div>
+    </form>
   </div>
-</form>
+</div>

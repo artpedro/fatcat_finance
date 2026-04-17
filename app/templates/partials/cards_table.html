@@ -1,55 +1,81 @@
-<div class="cards-grid">
+<div id="cards-list">
   {% for row in cards_rows %}
-  <article class="card tw card-panel" data-card-id="{{ row.card.id }}">
-    <header class="card-head">
-      <div class="card-title">
-        <span class="dot" style="background:{{ row.card.color }}"></span>
-        <h3>{{ row.card.name }}</h3>
-      </div>
-      <div class="card-meta">
-        <span>Fech. dia {{ row.card.closing_day or "—" }}</span>
-        <span>Venc. dia {{ row.card.due_day or "—" }}</span>
-      </div>
-    </header>
-    <section class="card-bills">
-      {% if row.actionable %}
-        {% for view in row.actionable %}
-        <div class="bill-row {% if view.is_open %}bill-open{% elif view.is_unpaid_closed %}bill-unpaid{% endif %}">
-          <div class="bill-period">
-            <span class="bill-label">
-              {% if view.is_open %}Fatura atual{% elif view.is_unpaid_closed %}Fatura vencida{% else %}Fatura{% endif %}
-              · {{ view.cycle_label }}
-            </span>
-            <span class="bill-range">{{ view.period_fmt }}</span>
-          </div>
-          <div class="bill-total">{{ view.total_fmt }}</div>
-          <div class="bill-actions">
-            {% include "partials/pay_button.html" %}
-          </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="bill-row muted">Sem fatura neste ciclo.</div>
-      {% endif %}
-    </section>
-    <footer class="card-foot">
-      <div class="card-metrics">
-        {% if row.card.limit_amount > 0 %}
-        <span class="metric"><b>Limite</b> {{ row.outstanding_fmt }} / {{ row.limit_fmt }}</span>
+  <article class="ci" data-card-id="{{ row.card.id }}">
+    <div class="ci-av" style="background:{{ row.card.color }}">{{ row.card.name[:1]|upper }}</div>
+    <div class="ci-body">
+      <div class="ci-name">
+        <span>{{ row.card.name }}</span>
+        {% if row.card.is_used_by_subscriptions %}
+        <span class="maint-tag">Assinaturas</span>
         {% endif %}
-        {% if row.card.is_used_by_subscriptions %}<span class="badge bg-rose">Assinaturas</span>{% endif %}
+        {% if row.card.maintenance_type == 'fixed' %}
+        <span class="maint-tag">Taxa fixa</span>
+        {% elif row.card.maintenance_type == 'conditional' %}
+        <span class="maint-tag">Taxa condicional</span>
+        {% endif %}
       </div>
-      <div class="card-ctl">
+      <div class="ci-meta">
+        Fech. dia {{ row.card.closing_day or "—" }} · Venc. dia {{ row.card.due_day or "—" }}
+      </div>
+
+      {% if row.card.limit_amount and row.card.limit_amount > 0 %}
+      {% set pct = ((row.outstanding / row.card.limit_amount) * 100) if row.card.limit_amount else 0 %}
+      {% if pct < 0 %}{% set pct = 0 %}{% endif %}
+      {% if pct > 100 %}{% set pct = 100 %}{% endif %}
+      <div class="ci-limit">
+        <div class="ci-limit-lbl">
+          <span>Limite utilizado</span>
+          <span>{{ row.outstanding_fmt }} / {{ row.limit_fmt }}</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-fill" style="width: {{ pct }}%; background: {{ row.card.color }}"></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="ci-bills">
+        {% if row.actionable %}
+          {% for view in row.actionable %}
+          <div class="bill-row {% if view.is_open %}bill-open{% elif view.is_unpaid_closed %}bill-unpaid{% endif %}">
+            <div class="bill-period">
+              <span class="bill-label">
+                {% if view.is_open %}Fatura atual{% elif view.is_unpaid_closed %}Fatura vencida{% else %}Fatura{% endif %}
+                · {{ view.cycle_label }}
+              </span>
+              <span class="bill-range">{{ view.period_fmt }}</span>
+            </div>
+            <div class="bill-total">{{ view.total_fmt }}</div>
+            <div class="bill-actions">
+              {% include "partials/pay_button.html" %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="bill-row muted">Sem fatura neste ciclo.</div>
+        {% endif %}
+      </div>
+
+      <div class="ci-acts">
         <button type="button" class="btn btn-ghost btn-sm"
           hx-get="/cards/{{ row.card.id }}/bills?{{ query }}"
           hx-target="#bill-history-wrap"
           hx-swap="innerHTML">Histórico</button>
-        <button type="button" class="btn btn-ghost btn-sm" hx-get="/cards/form/{{ row.card.id }}?{{ query }}" hx-target="#card-form-wrap" hx-swap="innerHTML">Editar</button>
-        <button type="button" class="btn btn-danger btn-sm" hx-delete="/cards/{{ row.card.id }}?{{ query }}" hx-target="#cards-table-wrap" hx-swap="innerHTML">Excluir</button>
+        <button type="button" class="btn btn-ghost btn-sm"
+          hx-get="/cards/form/{{ row.card.id }}?{{ query }}"
+          hx-target="#card-form-wrap"
+          hx-swap="innerHTML">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm"
+          hx-delete="/cards/{{ row.card.id }}?{{ query }}"
+          hx-target="#cards-table-wrap"
+          hx-swap="innerHTML"
+          hx-confirm="Excluir este cartão?">Excluir</button>
       </div>
-    </footer>
+    </div>
   </article>
   {% else %}
-  <div class="card tw"><p class="muted">Nenhum cartão cadastrado.</p></div>
+  <div class="empty">
+    <div class="empty-icon">💳</div>
+    <p>Nenhum cartão cadastrado</p>
+  </div>
   {% endfor %}
 </div>

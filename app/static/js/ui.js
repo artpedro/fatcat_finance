@@ -99,6 +99,26 @@ function fatcatIncomeEndToggle(cb) {
   if (!cb.checked) end.value = "";
 }
 
+function fatcatModalBackdrop(event, modal) {
+  if (event.target !== modal) return;
+  const clearUrl = modal.getAttribute("data-modal-clear");
+  const target = modal.getAttribute("data-modal-target");
+  if (clearUrl && target && window.htmx) {
+    window.htmx.ajax("GET", clearUrl, { target: target, swap: "innerHTML" });
+  }
+}
+
+function fatcatModalEscape(event) {
+  if (event.key !== "Escape") return;
+  const open = document.querySelector(".mo.open");
+  if (!open) return;
+  const clearUrl = open.getAttribute("data-modal-clear");
+  const target = open.getAttribute("data-modal-target");
+  if (clearUrl && target && window.htmx) {
+    window.htmx.ajax("GET", clearUrl, { target: target, swap: "innerHTML" });
+  }
+}
+
 document.body.addEventListener("htmx:afterSwap", () => {
   const typeSelect = document.querySelector("select[name='exp_type']");
   if (typeSelect) fatcatToggleType(typeSelect);
@@ -115,4 +135,5 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("select[name='category_id']").forEach((sel) => fatcatToggleNewCategory(sel));
   document.querySelectorAll("form[data-sub-term]").forEach((f) => fatcatSubscriptionTermInit(f));
   fatcatIncomeFormInit();
+  document.addEventListener("keydown", fatcatModalEscape);
 });

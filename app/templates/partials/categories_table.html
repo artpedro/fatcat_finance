@@ -1,4 +1,5 @@
-<div class="card tw">
+{% if categories %}
+<div class="blk tw">
   <table>
     <thead>
       <tr>
@@ -32,9 +33,15 @@
           {% endif %}
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="3">Nenhuma categoria.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="blk">
+  <div class="empty">
+    <div class="empty-icon">🏷️</div>
+    <p>Nenhuma categoria cadastrada</p>
+  </div>
+</div>
+{% endif %}

@@ -12,11 +12,12 @@
       <button type="button" class="btn btn-ghost" hx-get="/subscriptions/form?{{ query }}&return_partial=expenses" hx-target="#expense-form-wrap" hx-swap="innerHTML">+ Nova assinatura</button>
     </div>
   </div>
-  <form class="blk grid gap-3 md:grid-cols-2 lg:grid-cols-5" method="get" action="/expenses">
+  <form class="blk filter-bar" method="get" action="/expenses">
     <input type="hidden" name="month" value="{{ month }}">
     <input type="hidden" name="year" value="{{ year }}">
-    <label class="text-sm lg:col-span-2"><span class="fg-label">Exibir</span>
-      <select class="mt-1" name="f_pay" onchange="this.form.submit()">
+    <div class="fg field">
+      <label>Exibir</label>
+      <select name="f_pay" onchange="this.form.submit()">
         <option value="" {% if not filter_pay %}selected{% endif %}>Todos</option>
         <option value="pix_sub" {% if filter_pay == 'pix_sub' %}selected{% endif %}>PIX: Assinaturas</option>
         <option value="pix_buy" {% if filter_pay == 'pix_buy' %}selected{% endif %}>PIX: Compras</option>
@@ -25,9 +26,10 @@
         <option value="card_buy" {% if filter_pay == 'card_buy' %}selected{% endif %}>Cartões: Compras</option>
         <option value="card_all" {% if filter_pay == 'card_all' %}selected{% endif %}>Cartão: Compras + Assinaturas</option>
       </select>
-    </label>
-    <label class="text-sm lg:col-span-2"><span class="fg-label">Cartão</span>
-      <select class="mt-1" name="f_card" onchange="this.form.submit()" {% if card_filter_disabled %}disabled{% endif %}>
+    </div>
+    <div class="fg field">
+      <label>Cartão</label>
+      <select name="f_card" onchange="this.form.submit()" {% if card_filter_disabled %}disabled{% endif %}>
         <option value="">Todos</option>
         {% for card in cards %}
           <option value="{{ card.id }}" {% if filter_card == card.id %}selected{% endif %}>{{ card.name }}</option>
@@ -36,14 +38,15 @@
       {% if card_filter_disabled %}
       <input type="hidden" name="f_card" value="">
       {% endif %}
-    </label>
-    <label class="text-sm"><span class="fg-label">Ciclo</span>
-      <select class="mt-1" name="period" onchange="this.form.submit()">
+    </div>
+    <div class="fg field">
+      <label>Ciclo</label>
+      <select name="period" onchange="this.form.submit()">
         <option value="month" {% if filter_period == 'month' %}selected{% endif %}>Ciclo selecionado</option>
         <option value="all" {% if filter_period == 'all' %}selected{% endif %}>Todos os ciclos</option>
       </select>
-    </label>
-    <div class="filter-submit md:col-span-2 lg:col-span-5">
+    </div>
+    <div class="filter-submit">
       <button class="btn btn-ghost" type="submit">Aplicar filtros</button>
     </div>
   </form>

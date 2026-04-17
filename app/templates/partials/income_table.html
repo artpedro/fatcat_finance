@@ -1,4 +1,5 @@
-<div class="card tw">
+{% if income_rows %}
+<div class="blk tw">
   <table>
     <thead>
       <tr>
@@ -27,9 +28,15 @@
           <button type="button" class="btn btn-danger btn-sm" hx-delete="/income/{{ row.source.id }}?{{ query }}" hx-target="#income-table-wrap" hx-swap="innerHTML">Excluir</button>
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="8">Nenhuma fonte cadastrada.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="blk">
+  <div class="empty">
+    <div class="empty-icon">💰</div>
+    <p>Nenhuma fonte de receita cadastrada</p>
+  </div>
+</div>
+{% endif %}
