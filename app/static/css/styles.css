@@ -35,8 +35,6 @@
   --ok: #5e9e7a;
   --err: #c05a50;
   --warn: #ca8c30;
-  --logo-dark: block;
-  --logo-light: none;
 }
 
 [data-theme="dark"] {
@@ -63,8 +61,6 @@
   --ok: #7ec99a;
   --err: #e07060;
   --warn: #e4a840;
-  --logo-dark: none;
-  --logo-light: block;
 }
 
 body {
@@ -103,15 +99,22 @@ body {
 
 .sb-logo img {
   width: 140px;
-  display: block;
 }
 
 .logo-for-light {
-  display: var(--logo-dark);
+  display: block;
 }
 
 .logo-for-dark {
-  display: var(--logo-light);
+  display: none;
+}
+
+[data-theme="dark"] .logo-for-light {
+  display: none;
+}
+
+[data-theme="dark"] .logo-for-dark {
+  display: block;
 }
 
 .sb-nav {
