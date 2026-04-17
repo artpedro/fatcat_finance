@@ -400,6 +400,67 @@ def test_legacy_pix_path_redirects_to_expenses_pix_filter(client, test_engine):
     assert r.headers["location"] == "/expenses?month=2&year=2026&f_pay=pix_all"
 
 
+def test_pix_cycle_setting_round_trip(client, test_engine):
+    reset_db(test_engine)
+    r = client.post(
+        "/settings/pix-cycle",
+        data={"pix_closing_day": 15, "path": "/dashboard"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    with Session(test_engine) as session:
+        assert session.exec(select(AppSettings)).first().pix_closing_day == 15
+
+
+def test_card_pay_and_unpay_flow(client, test_engine):
+    """Paying an open bill freezes its total; unpay reverts to closed_unpaid."""
+    from datetime import date
+
+    from app.models import BillCycle
+    from app.services.bills import materialize_closed_cycles
+
+    reset_db(test_engine)
+    with Session(test_engine) as session:
+        card = Card(name="Visa", closing_day=10, due_day=20)
+        session.add(card)
+        session.commit()
+        session.refresh(card)
+        card_id = card.id
+        outros = _category_id(session, "Outros")
+        session.add(
+            Expense(
+                type="debit",
+                card_id=card.id,
+                description="Mercado",
+                amount_total=75,
+                installments=1,
+                purchase_day=2,
+                purchase_month=date.today().month - 1,
+                purchase_year=date.today().year,
+                category_id=outros,
+            )
+        )
+        session.commit()
+        materialize_closed_cycles(session, date.today())
+        bill = session.exec(
+            select(BillCycle).where(BillCycle.card_id == card_id, BillCycle.status == "open")
+        ).first()
+        bill_id = bill.id
+
+    r = client.post(f"/cards/{card_id}/bills/{bill_id}/pay")
+    assert r.status_code == 200
+    with Session(test_engine) as session:
+        refreshed = session.get(BillCycle, bill_id)
+        assert refreshed.status == "paid"
+        assert refreshed.paid_at is not None
+
+    r = client.post(f"/cards/{card_id}/bills/{bill_id}/unpay")
+    assert r.status_code == 200
+    with Session(test_engine) as session:
+        refreshed = session.get(BillCycle, bill_id)
+        assert refreshed.status == "closed_unpaid"
+
+
 def test_active_subscription_appears_on_expenses_page(client, test_engine):
     reset_db(test_engine)
     with Session(test_engine) as session:

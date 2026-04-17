@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import date
 from urllib.parse import urlencode
 
 from fastapi import Request
 from sqlmodel import Session, select
 
 from app.models import AppSettings
+from app.services.bills import materialize_closed_cycles
 from app.services.finance import MONTHS, MONTHS_FULL
 
 
@@ -37,16 +39,22 @@ def base_context(request: Request, month: int, year: int, settings: AppSettings)
         "month_full_label": f"{MONTHS_FULL[month]} de {year}",
         "theme": settings.theme,
         "query": query,
+        "pix_closing_day": settings.pix_closing_day,
     }
 
 
 def resolve_and_sync_period(request: Request, session: Session, settings: AppSettings) -> tuple[int, int]:
-    """Resolve month/year from URL or settings, then persist so HTMX POSTs without query stay aligned."""
+    """Resolve month/year from URL or settings, persist it, then self-heal BillCycle rows.
+
+    Running `materialize_closed_cycles` on every page load keeps the
+    persisted bill statements in sync with today's date and any pending
+    pay/unpay actions - no background scheduler required.
+    """
     month, year = current_period(request, settings)
     if settings.selected_month != month or settings.selected_year != year:
         settings.selected_month = month
         settings.selected_year = year
         session.add(settings)
         session.commit()
+    materialize_closed_cycles(session, date.today())
     return month, year
-

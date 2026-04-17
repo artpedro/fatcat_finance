@@ -1,33 +1,55 @@
-<div class="card tw">
-  <table>
-    <thead>
-      <tr>
-        <th>Cartão</th>
-        <th>Fechamento</th>
-        <th>Vencimento</th>
-        <th>Total mês</th>
-        <th>Limite</th>
-        <th>Assinaturas</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in cards_rows %}
-      <tr>
-        <td><span class="dot" style="background:{{ row.card.color }};margin-right:8px;vertical-align:middle"></span>{{ row.card.name }}</td>
-        <td>Dia {{ row.card.closing_day or "—" }}</td>
-        <td>Dia {{ row.card.due_day or "—" }}</td>
-        <td>{{ row.total_fmt }}</td>
-        <td>{% if row.card.limit_amount > 0 %}{{ row.outstanding_fmt }} / {{ row.limit_fmt }}{% else %}—{% endif %}</td>
-        <td>{% if row.card.is_used_by_subscriptions %}<span class="badge bg-rose">Sim</span>{% else %}<span class="badge bg-gray">Não</span>{% endif %}</td>
-        <td>
-          <button type="button" class="btn btn-ghost btn-sm" hx-get="/cards/form/{{ row.card.id }}?{{ query }}" hx-target="#card-form-wrap" hx-swap="innerHTML">Editar</button>
-          <button type="button" class="btn btn-danger btn-sm" hx-delete="/cards/{{ row.card.id }}?{{ query }}" hx-target="#cards-table-wrap" hx-swap="innerHTML">Excluir</button>
-        </td>
-      </tr>
+<div class="cards-grid">
+  {% for row in cards_rows %}
+  <article class="card tw card-panel" data-card-id="{{ row.card.id }}">
+    <header class="card-head">
+      <div class="card-title">
+        <span class="dot" style="background:{{ row.card.color }}"></span>
+        <h3>{{ row.card.name }}</h3>
+      </div>
+      <div class="card-meta">
+        <span>Fech. dia {{ row.card.closing_day or "—" }}</span>
+        <span>Venc. dia {{ row.card.due_day or "—" }}</span>
+      </div>
+    </header>
+    <section class="card-bills">
+      {% if row.actionable %}
+        {% for view in row.actionable %}
+        <div class="bill-row {% if view.is_open %}bill-open{% elif view.is_unpaid_closed %}bill-unpaid{% endif %}">
+          <div class="bill-period">
+            <span class="bill-label">
+              {% if view.is_open %}Fatura atual{% elif view.is_unpaid_closed %}Fatura vencida{% else %}Fatura{% endif %}
+              · {{ view.cycle_label }}
+            </span>
+            <span class="bill-range">{{ view.period_fmt }}</span>
+          </div>
+          <div class="bill-total">{{ view.total_fmt }}</div>
+          <div class="bill-actions">
+            {% include "partials/pay_button.html" %}
+          </div>
+        </div>
+        {% endfor %}
       {% else %}
-      <tr><td colspan="7">Nenhum cartão cadastrado.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        <div class="bill-row muted">Sem fatura neste ciclo.</div>
+      {% endif %}
+    </section>
+    <footer class="card-foot">
+      <div class="card-metrics">
+        {% if row.card.limit_amount > 0 %}
+        <span class="metric"><b>Limite</b> {{ row.outstanding_fmt }} / {{ row.limit_fmt }}</span>
+        {% endif %}
+        {% if row.card.is_used_by_subscriptions %}<span class="badge bg-rose">Assinaturas</span>{% endif %}
+      </div>
+      <div class="card-ctl">
+        <button type="button" class="btn btn-ghost btn-sm"
+          hx-get="/cards/{{ row.card.id }}/bills?{{ query }}"
+          hx-target="#bill-history-wrap"
+          hx-swap="innerHTML">Histórico</button>
+        <button type="button" class="btn btn-ghost btn-sm" hx-get="/cards/form/{{ row.card.id }}?{{ query }}" hx-target="#card-form-wrap" hx-swap="innerHTML">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm" hx-delete="/cards/{{ row.card.id }}?{{ query }}" hx-target="#cards-table-wrap" hx-swap="innerHTML">Excluir</button>
+      </div>
+    </footer>
+  </article>
+  {% else %}
+  <div class="card tw"><p class="muted">Nenhum cartão cadastrado.</p></div>
+  {% endfor %}
 </div>

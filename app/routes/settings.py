@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 from app.db import get_session
 from app.routes.common import get_settings
+from app.services.bills import materialize_closed_cycles
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -64,3 +65,30 @@ def toggle_theme(request: Request, session: Session = Depends(get_session)):
     dest = f"{path}?{urlencode(preserved)}"
     return RedirectResponse(url=dest, status_code=303)
 
+
+@router.post("/pix-cycle")
+def set_pix_cycle(
+    request: Request,
+    pix_closing_day: int = Form(0),
+    path: str = Form("/settings"),
+    session: Session = Depends(get_session),
+):
+    """Update the closing day used to group non-card PIX flows into cycles.
+
+    Setting it to 0 disables PIX cycles (PIX then stays month-based). Any
+    positive value (1-31) produces real PIX statements the same way cards do.
+    """
+    if pix_closing_day < 0 or pix_closing_day > 31:
+        raise HTTPException(status_code=400, detail="Dia de fechamento PIX inválido.")
+    settings = get_settings(session)
+    settings.pix_closing_day = int(pix_closing_day)
+    session.add(settings)
+    session.commit()
+    materialize_closed_cycles(session)
+    preserved: dict[str, str] = {}
+    for key, value in request.query_params.multi_items():
+        if key == "path":
+            continue
+        preserved[key] = value
+    dest = f"{path}?{urlencode(preserved)}" if preserved else path
+    return RedirectResponse(url=dest, status_code=303)

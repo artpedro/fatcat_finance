@@ -6,7 +6,7 @@
         <th>Pagamento</th>
         <th>Valor mensal</th>
         <th>Período</th>
-        <th>Status mês</th>
+        <th>Status ciclo</th>
         <th>Ações</th>
       </tr>
     </thead>
@@ -17,7 +17,7 @@
         <td>{{ row.pay_label }}</td>
         <td>{{ row.amount_fmt }}</td>
         <td>{{ row.period }}</td>
-        <td>{% if row.active %}<span class="badge bg-green">Ativa</span>{% else %}<span class="badge bg-gray">Inativa</span>{% endif %}</td>
+        <td>{% if row.active %}<span class="badge bg-green">Neste ciclo</span>{% else %}<span class="badge bg-gray">Fora do ciclo</span>{% endif %}</td>
         <td>
           <button type="button" class="btn btn-ghost btn-sm" hx-get="/subscriptions/form/{{ row.sub.id }}?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">Editar</button>
           <button type="button" class="btn btn-danger btn-sm" hx-delete="/subscriptions/{{ row.sub.id }}?{{ query }}" hx-target="#subscriptions-table-wrap" hx-swap="innerHTML">Excluir</button>

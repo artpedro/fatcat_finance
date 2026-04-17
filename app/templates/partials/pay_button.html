@@ -1,0 +1,16 @@
+<div class="pay-wrap">
+  <span class="alarm-pill alarm-{{ view.due_state }}" title="Vencimento">
+    <span class="alarm-dot"></span>
+    <span class="alarm-label">{{ view.due_label }}</span>
+  </span>
+  {% if view.is_paid %}
+    <button type="button" class="btn btn-ghost btn-sm"
+      hx-post="/cards/{{ row.card.id }}/bills/{{ view.bill.id }}/unpay?{{ query }}"
+      hx-target="#cards-table-wrap" hx-swap="innerHTML">Desfazer</button>
+    <span class="badge bg-green">Paga</span>
+  {% else %}
+    <button type="button" class="btn btn-primary btn-sm"
+      hx-post="/cards/{{ row.card.id }}/bills/{{ view.bill.id }}/pay?{{ query }}"
+      hx-target="#cards-table-wrap" hx-swap="innerHTML">Pagar</button>
+  {% endif %}
+</div>

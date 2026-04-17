@@ -5,7 +5,7 @@
   <div class="ph">
     <div>
       <h2>Visão Geral</h2>
-      <p>{{ month_full_label }}</p>
+      <p>Faturas encerradas em {{ month_full_label }}</p>
     </div>
   </div>
   <div class="g5">
@@ -14,9 +14,9 @@
       <div class="val green">{{ metrics.income_fmt }}</div>
     </div>
     <div class="mc">
-      <div class="lbl">Faturas cartões</div>
+      <div class="lbl">Faturas do ciclo</div>
       <div class="val red">{{ metrics.cards_fmt }}</div>
-      <div class="sub">Compras e assinaturas no cartão</div>
+      <div class="sub">Soma das faturas (abertas + fechadas) encerradas neste mês</div>
     </div>
     <div class="mc">
       <div class="lbl">PIX avulso</div>
@@ -79,9 +79,9 @@
       <div class="due-grid">
         {% for due in due_cards %}
           <div class="due-card">
-            <div class="due-name">{{ due.name }}</div>
+            <div class="due-name">{{ due.name }} <span class="badge bg-gray">{{ due.status_label }}</span></div>
             <div class="due-amt">{{ due.amount_fmt }}</div>
-            <div class="due-date {% if due.state == 'overdue' %}overdue{% elif due.state == 'soon' %}soon{% else %}ok{% endif %}">
+            <div class="due-date {% if due.state == 'overdue' %}overdue{% elif due.state == 'soon' or due.state == 'today' %}soon{% else %}ok{% endif %}">
               Dia {{ due.day }} · {{ due.label }}
             </div>
           </div>

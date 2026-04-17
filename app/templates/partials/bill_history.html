@@ -1,0 +1,64 @@
+<div class="card tw history-panel">
+  <div class="history-head">
+    <h3>Histórico — {{ card.name }}</h3>
+    <button type="button" class="btn btn-ghost btn-sm" hx-get="/cards/form-clear" hx-target="#bill-history-wrap" hx-swap="innerHTML">Fechar</button>
+  </div>
+  {% if bills %}
+  <table>
+    <thead>
+      <tr>
+        <th>Ciclo</th>
+        <th>Período</th>
+        <th>Status</th>
+        <th>Total</th>
+        <th>Vencimento</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for view in bills %}
+      <tr>
+        <td>{{ view.cycle_label }}</td>
+        <td>{{ view.period_fmt }}</td>
+        <td>
+          {% if view.is_paid %}<span class="badge bg-green">Paga</span>
+          {% elif view.is_open %}<span class="badge bg-gray">Aberta</span>
+          {% else %}<span class="badge bg-rose">Pendente</span>{% endif %}
+        </td>
+        <td>{{ view.total_fmt }}</td>
+        <td><span class="alarm-pill alarm-{{ view.due_state }}"><span class="alarm-dot"></span><span class="alarm-label">{{ view.due_label }}</span></span></td>
+        <td>
+          {% if view.is_paid %}
+          <button type="button" class="btn btn-ghost btn-sm"
+            hx-post="/cards/{{ card.id }}/bills/{{ view.bill.id }}/unpay?{{ query }}"
+            hx-target="#cards-table-wrap" hx-swap="innerHTML">Desfazer</button>
+          {% elif view.is_unpaid_closed or view.is_open %}
+          <button type="button" class="btn btn-primary btn-sm"
+            hx-post="/cards/{{ card.id }}/bills/{{ view.bill.id }}/pay?{{ query }}"
+            hx-target="#cards-table-wrap" hx-swap="innerHTML">Pagar</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% if view.lines %}
+      <tr class="history-lines">
+        <td colspan="6">
+          <ul class="line-list">
+            {% for line in view.lines %}
+            <li>
+              <span class="line-kind line-kind-{{ line.kind }}">{{ line.kind }}</span>
+              <span class="line-desc">{{ line.description }}</span>
+              <span class="line-cat">{{ line.category_name_snapshot }}</span>
+              <span class="line-amount">R$ {{ "%.2f"|format(line.amount) }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhuma fatura registrada ainda.</p>
+  {% endif %}
+</div>

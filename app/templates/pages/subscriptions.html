@@ -5,7 +5,7 @@
   <div class="ph">
     <div>
       <h2>Assinaturas</h2>
-      <p class="subtitle max-w-xl">Compras recorrentes ou por tempo limitado. Cada mês ativo entra automaticamente em <a class="link-accent" href="/expenses?{{ query }}">Lançamentos</a>. PIX ou cartão é só o meio de pagamento.</p>
+      <p class="subtitle max-w-xl">Compras recorrentes ou por tempo limitado. Cada ciclo ativo entra automaticamente na fatura do respectivo cartão (ou do ciclo PIX) e aparece em <a class="link-accent" href="/expenses?{{ query }}">Lançamentos</a>.</p>
     </div>
     <button type="button" class="btn btn-primary" hx-get="/subscriptions/form?{{ query }}" hx-target="#sub-form-wrap" hx-swap="innerHTML">+ Nova assinatura</button>
   </div>

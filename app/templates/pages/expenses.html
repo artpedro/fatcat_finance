@@ -5,7 +5,7 @@
   <div class="ph">
     <div>
       <h2>Lançamentos</h2>
-      <p class="subtitle max-w-xl">Compras no cartão, gastos PIX avulsos e assinaturas (cartão ou PIX). Use <strong>Exibir</strong> para combinar meio e tipo; nos modos só PIX o filtro de cartão fica indisponível.</p>
+      <p class="subtitle max-w-xl">Compras no cartão, gastos PIX avulsos e assinaturas (cartão ou PIX) agrupados pelo ciclo da fatura. O mês selecionado representa o ciclo que <strong>encerra</strong> ali; cada lançamento aparece no ciclo em que ele será cobrado.</p>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-primary" hx-get="/expenses/form?{{ query }}" hx-target="#expense-form-wrap" hx-swap="innerHTML">+ Novo lançamento</button>
@@ -37,10 +37,10 @@
       <input type="hidden" name="f_card" value="">
       {% endif %}
     </label>
-    <label class="text-sm"><span class="fg-label">Período</span>
+    <label class="text-sm"><span class="fg-label">Ciclo</span>
       <select class="mt-1" name="period" onchange="this.form.submit()">
-        <option value="month" {% if filter_period == 'month' %}selected{% endif %}>Mês selecionado</option>
-        <option value="all" {% if filter_period == 'all' %}selected{% endif %}>Todos os períodos</option>
+        <option value="month" {% if filter_period == 'month' %}selected{% endif %}>Ciclo selecionado</option>
+        <option value="all" {% if filter_period == 'all' %}selected{% endif %}>Todos os ciclos</option>
       </select>
     </label>
     <div class="filter-submit md:col-span-2 lg:col-span-5">

@@ -13,7 +13,7 @@ from app.models import Card, Subscription
 from app.routes.categories import build_category_field
 from app.routes.common import base_context, get_settings, resolve_and_sync_period
 from app.routes.expenses import expenses_list_query
-from app.services.finance import fmt_month, is_subscription_active
+from app.services.finance import fmt_month, subscription_cycle_hit
 from app.templates import brl, templates
 
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
@@ -28,7 +28,7 @@ def _subscription_form_context(
 ) -> dict:
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
-    cards = session.exec(select(Card)).all()
+    cards = list(session.exec(select(Card)))
     ctx = base_context(request, month, year, settings)
     return_partial = request.query_params.get("return_partial", "")
     if return_partial == "expenses":
@@ -61,10 +61,10 @@ def _subscription_form_context(
     return ctx
 
 
-def _rows(session: Session, month: int, year: int) -> tuple[list[dict], list[Card]]:
-    cards = session.exec(select(Card)).all()
-    cards_map = {card.id: card.name for card in cards}
-    subscriptions = session.exec(select(Subscription)).all()
+def _rows(session: Session, end_month: int, end_year: int, pix_closing_day: int) -> tuple[list[dict], list[Card]]:
+    cards = list(session.exec(select(Card)))
+    cards_map = {card.id: card for card in cards}
+    subscriptions = list(session.exec(select(Subscription)))
     rows: list[dict] = []
     for sub in subscriptions:
         end_label = "Sem fim"
@@ -73,11 +73,18 @@ def _rows(session: Session, month: int, year: int) -> tuple[list[dict], list[Car
         elif sub.end_month is not None and sub.end_year is not None:
             end_label = fmt_month(sub.end_month, sub.end_year)
         period = f"{fmt_month(sub.start_month, sub.start_year)} até {end_label}"
-        pay_label = f"Cartão: {cards_map.get(sub.card_id, '—')}" if sub.payment_method == "card" else "PIX"
+        if sub.payment_method == "card":
+            card = cards_map.get(sub.card_id or "")
+            pay_label = f"Cartão: {card.name}" if card else "Cartão: —"
+            closing = card.closing_day if card else 0
+        else:
+            pay_label = "PIX"
+            closing = pix_closing_day
+        active = subscription_cycle_hit(sub, closing, end_month, end_year)
         rows.append(
             {
                 "sub": sub,
-                "active": is_subscription_active(sub, month, year),
+                "active": active,
                 "period": period,
                 "pay_label": pay_label,
                 "amount_fmt": brl(sub.amount_monthly),
@@ -91,7 +98,7 @@ def _rows(session: Session, month: int, year: int) -> tuple[list[dict], list[Car
 def page(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
-    rows, cards = _rows(session, month, year)
+    rows, cards = _rows(session, month, year, int(settings.pix_closing_day))
     context = base_context(request, month, year, settings)
     context.update({"active": "subscriptions", "subscriptions_rows": rows, "cards": cards})
     return templates.TemplateResponse(request, "pages/subscriptions.html", context)
@@ -235,7 +242,7 @@ def save(
 
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
-    rows, _cards = _rows(session, month, year)
+    rows, _cards = _rows(session, month, year, int(settings.pix_closing_day))
     context = base_context(request, month, year, settings)
     context.update({"subscriptions_rows": rows})
     return templates.TemplateResponse(request, "partials/subscriptions_table.html", context)
@@ -255,8 +262,7 @@ def delete(sub_id: str, request: Request, session: Session = Depends(get_session
 
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
-    rows, _cards = _rows(session, month, year)
+    rows, _cards = _rows(session, month, year, int(settings.pix_closing_day))
     context = base_context(request, month, year, settings)
     context.update({"subscriptions_rows": rows})
     return templates.TemplateResponse(request, "partials/subscriptions_table.html", context)
-

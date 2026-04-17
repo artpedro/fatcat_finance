@@ -48,12 +48,20 @@
         </a>
       </nav>
       <div class="sb-foot">
-        <div class="sb-lbl">Mês de referência</div>
+        <div class="sb-lbl">Ciclo de referência</div>
         <div class="month-row">
-          <a href="/settings/month?delta=-1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Mês anterior">◀</a>
-          <span>{{ month_label }}</span>
-          <a href="/settings/month?delta=1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Próximo mês">▶</a>
+          <a href="/settings/month?delta=-1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Ciclo anterior">◀</a>
+          <span title="Faturas encerradas em {{ month_full_label }}">{{ month_label }}</span>
+          <a href="/settings/month?delta=1&amp;path={{ request.url.path }}&amp;{{ query|e }}" class="ico-btn" aria-label="Próximo ciclo">▶</a>
         </div>
+        <form method="post" action="/settings/pix-cycle" class="pix-cycle-form">
+          <input type="hidden" name="path" value="{{ request.url.path }}">
+          <label class="text-xs" title="Dia 0 = PIX segue mês calendário">
+            <span>PIX fech.</span>
+            <input type="number" min="0" max="31" name="pix_closing_day" value="{{ pix_closing_day|default(0) }}">
+          </label>
+          <button type="submit" class="btn btn-ghost btn-sm">OK</button>
+        </form>
         <form method="post" action="/settings/theme?path={{ request.url.path }}&amp;{{ query|e }}">
           <button type="submit" class="theme-btn">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
