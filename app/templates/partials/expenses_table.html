@@ -4,6 +4,7 @@
     <thead>
       <tr>
         <th>Descrição</th>
+        <th>Dia/Mês</th>
         <th>Compra</th>
         <th>Meio de pagamento</th>
         <th>Cartão</th>
@@ -18,6 +19,7 @@
       {% for row in expense_rows %}
       <tr>
         <td style="font-weight:700">{{ row.description }}</td>
+        <td>{{ row.day_month }}</td>
         <td>
           {% if row.purchase_type == 'subscription' %}
             <span class="badge bg-rose">Assinatura</span>
