@@ -127,6 +127,7 @@ def _expense_kind_rows(
             {
                 "kind": "expense",
                 "sort_key": (expense.purchase_year, expense.purchase_month, expense.purchase_day, 0),
+                "day_month": f"{expense.purchase_day:02d}/{expense.purchase_month + 1:02d}",
                 "description": expense.description,
                 "purchase_type": expense.type,
                 "payment_label": pay,
@@ -196,6 +197,7 @@ def _subscription_kind_rows(
             {
                 "kind": "subscription",
                 "sort_key": (sub.start_year, sub.start_month, sub.billing_day, 1),
+                "day_month": f"{sub.billing_day:02d}/{sub.start_month + 1:02d}",
                 "description": sub.description,
                 "purchase_type": "subscription",
                 "payment_label": pay,
@@ -248,6 +250,7 @@ def _pix_item_kind_rows(
             {
                 "kind": "pix_item",
                 "sort_key": (pix.start_year, pix.start_month, 0, 2),
+                "day_month": f"01/{pix.start_month + 1:02d}",
                 "description": pix.description,
                 "purchase_type": "pix_item",
                 "payment_label": "PIX",

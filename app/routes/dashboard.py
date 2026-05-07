@@ -20,6 +20,7 @@ from app.services.bills import card_cycle_view, pix_cycle_view
 from app.services.finance import (
     due_urgency,
     income_total_for_month,
+    is_income_active,
 )
 from app.templates import brl, templates
 
@@ -148,14 +149,52 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
     palette = ["#DB8A74", "#9B8FD4", "#82C4A8", "#E4A840", "#C4A4D8", "#88B8E0", "#FAC9B8"]
     chart_cat_colors = [palette[idx % len(palette)] for idx, _ in enumerate(chart_cat_labels)]
 
-    sankey_nodes = [{"name": "Receitas", "color": "#82C4A8"}]
+    active_incomes = [income for income in incomes if is_income_active(income, month, year)]
+    total_costs = sum(cat_totals.values())
+    sankey_nodes: list[dict] = []
     sankey_links: list[dict] = []
-    for idx, label in enumerate(chart_cat_labels, start=1):
-        sankey_nodes.append({"name": label, "color": chart_cat_colors[(idx - 1) % len(chart_cat_colors)]})
-        sankey_links.append({"source": 0, "target": idx, "value": cat_totals[label], "color": sankey_nodes[idx]["color"]})
+    for income in active_incomes:
+        source_idx = len(sankey_nodes)
+        sankey_nodes.append({"name": income.name, "color": "#82C4A8"})
+        sankey_links.append(
+            {
+                "source": source_idx,
+                "target": len(active_incomes),
+                "value": income.amount,
+                "color": "#82C4A8",
+            }
+        )
+
+    income_hub_idx = len(sankey_nodes)
+    sankey_nodes.append({"name": "Receitas", "color": "#82C4A8"})
+
+    for label in chart_cat_labels:
+        pct = ((cat_totals[label] / total_costs) * 100) if total_costs > 0 else 0.0
+        target_idx = len(sankey_nodes)
+        sankey_nodes.append(
+            {
+                "name": f"{label} ({pct:.1f}%)",
+                "color": chart_cat_colors[(target_idx - income_hub_idx - 1) % len(chart_cat_colors)],
+            }
+        )
+        sankey_links.append(
+            {
+                "source": income_hub_idx,
+                "target": target_idx,
+                "value": cat_totals[label],
+                "color": sankey_nodes[target_idx]["color"],
+            }
+        )
     if balance > 0:
         sankey_nodes.append({"name": "Saldo", "color": "#82C4A8"})
-        sankey_links.append({"source": 0, "target": len(sankey_nodes) - 1, "value": balance, "color": "#82C4A8"})
+        sankey_links.append(
+            {
+                "source": income_hub_idx,
+                "target": len(sankey_nodes) - 1,
+                "value": balance,
+                "color": "#82C4A8",
+            }
+        )
 
     today = date.today()
     due_cards: list[dict] = []
