@@ -40,8 +40,14 @@
       </div>
       <div class="fg">
         <label>Data da compra</label>
-        <input type="date" name="purchase_date" required value="{{ purchase_date }}">
-        <span class="hint">Calendário do navegador (exibição local, ex. dd/mm/aaaa).</span>
+        <input type="text" name="purchase_date" required
+               inputmode="numeric"
+               pattern="\d{2}/\d{2}/\d{4}"
+               placeholder="dd/mm/aaaa"
+               maxlength="10"
+               data-br-date
+               value="{{ purchase_date }}">
+        <span class="hint">Formato dd/mm/aaaa.</span>
       </div>
       {% include "partials/category_field.html" %}
       <div class="ma">

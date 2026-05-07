@@ -12,7 +12,7 @@ from app.routes.common import base_context, get_settings, resolve_and_sync_perio
 from app.services.bills import (
     lines_for_bill,
     materialize_closed_cycles,
-    open_bill_live_total,
+    open_bill_split_totals,
     pay_bill,
     unpay_bill,
 )
@@ -46,8 +46,10 @@ def _bill_view(
     category_names: dict[str, str],
     today: date,
 ) -> dict:
+    own_total = 0.0
+    carry_total = 0.0
     if bill.status == "open":
-        total, lines = open_bill_live_total(
+        own_total, carry_total, lines = open_bill_split_totals(
             session,
             bill,
             card=card,
@@ -57,7 +59,7 @@ def _bill_view(
             category_names=category_names,
         )
     else:
-        total = float(bill.total_amount)
+        own_total = float(bill.total_amount)
         lines = lines_for_bill(
             session,
             bill,
@@ -67,13 +69,18 @@ def _bill_view(
             pix_items=pix_items,
             category_names=category_names,
         )
+    total = own_total + carry_total
     state, label = due_urgency(
         bill.cycle_end_month, bill.cycle_end_year, bill.due_day_snapshot, today
     )
     return {
         "bill": bill,
         "total": total,
+        "own_total": own_total,
+        "carryover_total": carry_total,
         "total_fmt": brl(total),
+        "own_total_fmt": brl(own_total),
+        "carryover_total_fmt": brl(carry_total),
         "period_fmt": _period_fmt(bill),
         "cycle_label": f"{MONTHS[bill.cycle_end_month]}/{bill.cycle_end_year}",
         "due_state": state,
@@ -249,7 +256,12 @@ def pay_card_bill(
     bill = session.get(BillCycle, bill_id)
     if bill is None or bill.card_id != card_id:
         raise HTTPException(status_code=404, detail="Fatura não encontrada.")
-    pay_bill(session, bill_id)
+    if bill.status == "open":
+        raise HTTPException(
+            status_code=409,
+            detail="Fatura ainda aberta. Aguarde o fechamento para pagar.",
+        )
+    pay_bill(session, bill_id, today=date.today())
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)
@@ -267,7 +279,7 @@ def unpay_card_bill(
     bill = session.get(BillCycle, bill_id)
     if bill is None or bill.card_id != card_id:
         raise HTTPException(status_code=404, detail="Fatura não encontrada.")
-    unpay_bill(session, bill_id)
+    unpay_bill(session, bill_id, today=date.today())
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
     context = base_context(request, month, year, settings)

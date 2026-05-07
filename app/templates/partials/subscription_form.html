@@ -43,13 +43,25 @@
       </div>
       <div class="fg">
         <label>Início da vigência</label>
-        <input type="date" name="start" required value="{{ start_date_iso }}">
-        <span class="hint">Seletor de data (formato local no navegador).</span>
+        <input type="text" name="start" required
+               inputmode="numeric"
+               pattern="\d{2}/\d{2}/\d{4}"
+               placeholder="dd/mm/aaaa"
+               maxlength="10"
+               data-br-date
+               value="{{ start_date_br }}">
+        <span class="hint">Formato dd/mm/aaaa.</span>
       </div>
       <div class="fg-row">
         <div class="fg">
           <label>Data final <span class="hint">(opcional)</span></label>
-          <input type="date" name="end" value="{{ end_date_iso }}">
+          <input type="text" name="end"
+                 inputmode="numeric"
+                 pattern="\d{2}/\d{2}/\d{4}"
+                 placeholder="dd/mm/aaaa"
+                 maxlength="10"
+                 data-br-date
+                 value="{{ end_date_br }}">
           <span class="hint">Deixe vazio para assinatura sem término.</span>
         </div>
         <div class="fg">

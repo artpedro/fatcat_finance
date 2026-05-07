@@ -32,8 +32,14 @@
       </div>
       <div class="fg">
         <label>Início da vigência</label>
-        <input type="date" name="start" required value="{{ start_date_iso }}">
-        <span class="hint">Seletor de data (formato local no navegador).</span>
+        <input type="text" name="start" required
+               inputmode="numeric"
+               pattern="\d{2}/\d{2}/\d{4}"
+               placeholder="dd/mm/aaaa"
+               maxlength="10"
+               data-br-date
+               value="{{ start_date_br }}">
+        <span class="hint">Formato dd/mm/aaaa.</span>
       </div>
       <div class="fg">
         <label>Término</label>
@@ -47,8 +53,14 @@
       </div>
       <div class="fg">
         <label>Data de término</label>
-        <input type="date" name="end" id="income-end-date" value="{{ end_date_iso }}">
-        <span class="hint">Só vale quando a opção acima está marcada.</span>
+        <input type="text" name="end" id="income-end-date"
+               inputmode="numeric"
+               pattern="\d{2}/\d{2}/\d{4}"
+               placeholder="dd/mm/aaaa"
+               maxlength="10"
+               data-br-date
+               value="{{ end_date_br }}">
+        <span class="hint">Formato dd/mm/aaaa. Só vale quando a opção acima está marcada.</span>
       </div>
       <div class="fg">
         <label>Notas</label>

@@ -420,6 +420,13 @@ def test_card_pay_and_unpay_flow(client, test_engine):
     from app.services.bills import materialize_closed_cycles
 
     reset_db(test_engine)
+    today = date.today()
+    if today.month == 1:
+        prior_year = today.year - 1
+        prior_month = 12
+    else:
+        prior_year = today.year
+        prior_month = today.month - 1
     with Session(test_engine) as session:
         card = Card(name="Visa", closing_day=10, due_day=20)
         session.add(card)
@@ -435,16 +442,20 @@ def test_card_pay_and_unpay_flow(client, test_engine):
                 amount_total=75,
                 installments=1,
                 purchase_day=2,
-                purchase_month=date.today().month - 1,
-                purchase_year=date.today().year,
+                purchase_month=prior_month - 1,
+                purchase_year=prior_year,
                 category_id=outros,
             )
         )
         session.commit()
-        materialize_closed_cycles(session, date.today())
+        materialize_closed_cycles(session, today)
         bill = session.exec(
-            select(BillCycle).where(BillCycle.card_id == card_id, BillCycle.status == "open")
+            select(BillCycle).where(
+                BillCycle.card_id == card_id,
+                BillCycle.status == "closed_unpaid",
+            )
         ).first()
+        assert bill is not None, "There must be a closed_unpaid bill to pay"
         bill_id = bill.id
 
     r = client.post(f"/cards/{card_id}/bills/{bill_id}/pay")
@@ -459,6 +470,31 @@ def test_card_pay_and_unpay_flow(client, test_engine):
     with Session(test_engine) as session:
         refreshed = session.get(BillCycle, bill_id)
         assert refreshed.status == "closed_unpaid"
+
+
+def test_paying_open_bill_is_blocked(client, test_engine):
+    """The pay endpoint must refuse to pay a bill that is still open."""
+    from datetime import date
+
+    from app.models import BillCycle
+    from app.services.bills import materialize_closed_cycles
+
+    reset_db(test_engine)
+    with Session(test_engine) as session:
+        card = Card(name="Visa", closing_day=10, due_day=20)
+        session.add(card)
+        session.commit()
+        session.refresh(card)
+        card_id = card.id
+        materialize_closed_cycles(session, date.today())
+        open_bill = session.exec(
+            select(BillCycle).where(BillCycle.card_id == card_id, BillCycle.status == "open")
+        ).first()
+        assert open_bill is not None
+        bill_id = open_bill.id
+
+    r = client.post(f"/cards/{card_id}/bills/{bill_id}/pay")
+    assert r.status_code == 409
 
 
 def test_active_subscription_appears_on_expenses_page(client, test_engine):

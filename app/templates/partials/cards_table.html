@@ -43,6 +43,11 @@
                 · {{ view.cycle_label }}
               </span>
               <span class="bill-range">{{ view.period_fmt }}</span>
+              {% if view.is_open and view.carryover_total and view.carryover_total > 0 %}
+              <span class="bill-carryover">
+                Ciclo: {{ view.own_total_fmt }} + Vencido: {{ view.carryover_total_fmt }}
+              </span>
+              {% endif %}
             </div>
             <div class="bill-total">{{ view.total_fmt }}</div>
             <div class="bill-actions">

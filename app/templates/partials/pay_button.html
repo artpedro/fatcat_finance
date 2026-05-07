@@ -8,9 +8,11 @@
       hx-post="/cards/{{ row.card.id }}/bills/{{ view.bill.id }}/unpay?{{ query }}"
       hx-target="#cards-table-wrap" hx-swap="innerHTML">Desfazer</button>
     <span class="badge bg-green">Paga</span>
-  {% else %}
+  {% elif view.is_unpaid_closed %}
     <button type="button" class="btn btn-primary btn-sm"
       hx-post="/cards/{{ row.card.id }}/bills/{{ view.bill.id }}/pay?{{ query }}"
       hx-target="#cards-table-wrap" hx-swap="innerHTML">Pagar</button>
+  {% else %}
+    <span class="badge bg-amber" title="A fatura ainda está aberta. Será fechada no dia {{ view.bill.cycle_end_day }}.">Aberta</span>
   {% endif %}
 </div>

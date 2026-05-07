@@ -8,7 +8,10 @@ from sqlmodel import Session, select
 
 from app.category_utils import parse_category_id
 from app.db import get_session
-from app.form_dates import month_year_to_date_iso, parse_iso_date_to_month_year
+from app.form_dates import (
+    month_year_to_date_br,
+    parse_br_date_to_month_year,
+)
 from app.models import Card, Subscription
 from app.routes.categories import build_category_field
 from app.routes.common import base_context, get_settings, resolve_and_sync_period
@@ -23,8 +26,8 @@ def _subscription_form_context(
     request: Request,
     session: Session,
     sub: Subscription | None,
-    start_date_iso: str,
-    end_date_iso: str,
+    start_date_br: str,
+    end_date_br: str,
 ) -> dict:
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
@@ -41,8 +44,8 @@ def _subscription_form_context(
         {
             "sub": sub,
             "cards": cards,
-            "start_date_iso": start_date_iso,
-            "end_date_iso": end_date_iso,
+            "start_date_br": start_date_br,
+            "end_date_br": end_date_br,
             "return_partial": return_partial,
             "form_hx_target": form_hx_target,
             "form_cancel_target": form_cancel_target,
@@ -108,8 +111,8 @@ def page(request: Request, session: Session = Depends(get_session)):
 def form(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
-    start_date_iso = month_year_to_date_iso(year, month, 1)
-    context = _subscription_form_context(request, session, None, start_date_iso, "")
+    start_date_br = month_year_to_date_br(year, month, 1)
+    context = _subscription_form_context(request, session, None, start_date_br, "")
     return templates.TemplateResponse(request, "partials/subscription_form.html", context)
 
 
@@ -118,13 +121,13 @@ def form_edit(sub_id: str, request: Request, session: Session = Depends(get_sess
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
     sub = session.get(Subscription, sub_id)
-    start_date_iso = month_year_to_date_iso(year, month, 1)
-    end_date_iso = ""
+    start_date_br = month_year_to_date_br(year, month, 1)
+    end_date_br = ""
     if sub:
-        start_date_iso = month_year_to_date_iso(sub.start_year, sub.start_month, 1)
+        start_date_br = month_year_to_date_br(sub.start_year, sub.start_month, 1)
         if sub.end_month is not None and sub.end_year is not None:
-            end_date_iso = month_year_to_date_iso(sub.end_year, sub.end_month, 1)
-    context = _subscription_form_context(request, session, sub, start_date_iso, end_date_iso)
+            end_date_br = month_year_to_date_br(sub.end_year, sub.end_month, 1)
+    context = _subscription_form_context(request, session, sub, start_date_br, end_date_br)
     return templates.TemplateResponse(request, "partials/subscription_form.html", context)
 
 
@@ -177,9 +180,9 @@ def save(
             category_id=cid,
         )
     try:
-        sm_start, sy_start = parse_iso_date_to_month_year(start)
+        sm_start, sy_start = parse_br_date_to_month_year(start)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Data de início inválida.") from exc
+        raise HTTPException(status_code=400, detail=f"Data de início inválida: {exc}") from exc
     sub.description = description.strip()
     sub.amount_monthly = float(amount_monthly)
     sub.billing_day = int(billing_day)
@@ -221,9 +224,9 @@ def save(
             sub.end_month = None
         else:
             try:
-                em, ey = parse_iso_date_to_month_year(end_raw)
+                em, ey = parse_br_date_to_month_year(end_raw)
             except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Data final inválida.") from exc
+                raise HTTPException(status_code=400, detail=f"Data final inválida: {exc}") from exc
             sub.end_month = em
             sub.end_year = ey
             sub.duration_months = None

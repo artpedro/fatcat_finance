@@ -59,10 +59,16 @@ The app is primarily multi-page server-rendered HTML with selective in-page upda
 - `app/services/bills.py`: **persistence** of the bill lifecycle:
   - `materialize_closed_cycles(session, today)` reconciles every card (and the synthetic PIX flow) against the calendar; cycles that have
     crossed their end day are promoted to `closed_unpaid` with a frozen line snapshot, while the active cycle gets an `open` row whose
-    only persisted content is the optional `carryover` line.
-  - `pay_bill` / `unpay_bill` freeze the line snapshot (for opens) or toggle status back and forth.
-  - `open_bill_live_total` / `lines_for_bill` read a bill's content; open cycles mix live-computed lines with persisted carryovers, while
-    closed and paid cycles read exclusively from `BillCycleLine`.
+    only persisted content is one `carryover` line per still-unpaid prior bill. A scrub pass also strips any legacy `carryover` lines
+    that may exist on closed/paid bills, since closed snapshots represent OWN spending only.
+  - `pay_bill` / `unpay_bill` toggle status. Paying an open bill is REJECTED at the route level (status 409) - bills must close before
+    they can be paid. When `pay_bill` runs against an open bill internally, it freezes only the bill's own-period lines (carryover lines
+    are dropped because they belong on whatever is currently open, not on a paid bill).
+  - `card_cycle_view` / `pix_cycle_view` resolve a cycle for any (end_month, end_year): closed/paid bills return their frozen lines and
+    total; open bills return the live own_total alongside a separate carryover_total; cycles with NO persisted bill (past empty months
+    or future months with pending installments) project lines via `lines_for_open_cycle` so the dashboard never shows a misleading "0".
+  - `open_bill_split_totals` exposes `(own_total, carryover_total, lines)` so callers can render "this cycle: X + Vencido: Y" without
+    double-counting overdue into "money left this cycle".
 
 ### Route layer
 
@@ -111,9 +117,13 @@ Main entities in `app/models.py`:
 - `Subscription`: recurring/finite charges, payment method `card` or `pix`.
 - `PixItem`: one-off or recurring PIX entries (no card, no charge day).
 - `BillCycle` (NEW): persistent statement per `(scope, card_id, cycle_end_month, cycle_end_year)`. `scope` is `card` or `pix`; `status`
-  is `open` / `closed_unpaid` / `paid`. `total_amount` is frozen when status leaves `open`. `carryover_from_id` can trace overdue
-  cascading (currently informational).
-- `BillCycleLine` (NEW): frozen snapshot of a single line inside a non-open cycle, or a persisted `carryover` line on an open cycle.
+  is `open` / `closed_unpaid` / `paid`. `total_amount` represents the cycle's OWN spending only - never carryover from prior bills - so
+  summing `total_amount` for bills closing in a given month yields the user-visible "monthly cost" without double-counting overdue.
+  `carryover_from_id` is reserved for richer overdue cascading.
+- `BillCycleLine` (NEW): frozen snapshot of a single line inside a non-open cycle, OR a `carryover` line on an OPEN cycle.
+  Carryover lines are informational reminders of prior unpaid bills - one per still-unpaid prior cycle - and they DO NOT contribute to
+  `bill.total_amount`. They live exclusively on the active open cycle and are rebuilt every time `materialize_closed_cycles` runs, so
+  pay/unpay actions are immediately reflected.
 - `SavingsGroup` / `SavingsEntry`: future-facing entities, not wired to UI yet.
 
 Notable integrity rules:
@@ -130,26 +140,38 @@ Notable integrity rules:
 stateDiagram-v2
   [*] --> open
   open --> closed_unpaid: today crosses cycle_end (materialize_closed_cycles)
-  open --> paid: user pays while open (snapshot frozen at pay time)
-  closed_unpaid --> paid: user pays after closing
-  closed_unpaid --> carried_over: materialize finds newer open cycle → adds 'Fatura vencida' carryover line
+  closed_unpaid --> paid: user pays after closing (only path the UI exposes)
   paid --> closed_unpaid: user un-pays (snapshot stays frozen, only status reverts)
-  carried_over --> [*]
+  closed_unpaid --> closed_unpaid: contributes one 'Fatura vencida' line on the open cycle
+  paid --> [*]
 ```
 
 Key rules:
 
-- A cycle is **labeled by its `cycle_end_month/year`**. The bill ending in May is the "May bill" in graphs, filters and metrics.
-- `cycle_end_for_purchase(closing_day, day, month, year)` is the single source of truth for "which cycle does this charge fall into".
-  Closing day 0 collapses the cycle to the calendar month. A charge on day `D > effective_closing_day` rolls into the next cycle.
+- A cycle is **labeled by its `cycle_end_month/year`**. The bill ending in May is the "May bill" in graphs, filters and metrics, even
+  if it covers calendar days from April-May. The user's rule of thumb: "the pay cycle is always accounted by the closing date - a card
+  closing in May has a May pay cycle."
+- `cycle_end_for_purchase(closing_day, day, month, year)` is the single source of truth for "which cycle does this charge fall into":
+  - Closing day 0 collapses the cycle to the calendar month.
+  - A charge on day `D <= effective_closing_day` belongs to the cycle ending in `month`.
+  - A charge on day `D > effective_closing_day` rolls into the NEXT cycle.
+  - "After the closing date the purchase is accounted only on the next month."
+- `cycle_vencimento(due_day, end_month, end_year)` returns the due date as the `due_day` of the **calendar month after the cycle end**.
+  This implements the rule "if closing date is before expiring date, the bill closes in one month and expires in another" - a card
+  closing on the 5th and due on the 25th has its April-cycle close on Apr 5 and due on May 25.
+- Installments are counted in CYCLES, not calendar months: an installment purchase placed in cycle `K` with `N` parcels charges in
+  cycles `K, K+1, …, K+N-1`. Each `BillCycleLine` carries `installment_num`/`installments_total` so the UI can display `n/N`.
 - `active_cycle_today(closing_day, today)` picks the cycle containing today. Used for deciding which cycle is `open` per card.
 - `materialize_closed_cycles` guarantees:
-  1. Every past cycle with activity has a `closed_unpaid` `BillCycle` with a frozen `BillCycleLine` snapshot (including an inherited
-     carryover from the preceding unpaid cycle).
-  2. The active cycle always has exactly one `open` `BillCycle`, with live-computed lines and a persisted `carryover` line reflecting
-     the preceding cycle's current status (refreshed on every call).
+  1. Every past cycle with activity has a `closed_unpaid` `BillCycle` with a frozen `BillCycleLine` snapshot of OWN spending only - no
+     carryover from prior bills. `total_amount` therefore equals the sum of own lines and is safe to aggregate across cycles for
+     "monthly cost" reporting.
+  2. The active cycle always has exactly one `open` `BillCycle`. Its persisted lines are exactly the carryover lines (one per still-unpaid
+     prior bill, refreshed on every call). All non-carryover lines are computed live via `lines_for_open_cycle`.
   3. If a previously-`open` cycle has since been overtaken by time, it is promoted to `closed_unpaid` with a snapshot of its live
-     contents.
+     contents. Any carryover lines that lived on it are dropped at promotion (they re-emerge on whatever cycle is currently open).
+  4. A scrub pass removes carryover lines from any closed/paid bills (for legacy data) and recomputes their `total_amount` from
+     remaining lines.
 - PIX cycles are only materialized when `AppSettings.pix_closing_day > 0`. Setting it to 0 disables PIX cycles entirely; PIX items and
   PIX subscriptions then stay month-bound in the dashboard metrics.
 

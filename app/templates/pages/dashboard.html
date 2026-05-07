@@ -31,8 +31,16 @@
     <div class="mc">
       <div class="lbl">Saldo restante</div>
       <div class="val {% if metrics.balance >= 0 %}green{% else %}red{% endif %}">{{ metrics.balance_fmt }}</div>
+      <div class="sub">Receitas - faturas próprias do ciclo (sem vencidas)</div>
     </div>
   </div>
+
+  {% if metrics.overdue and metrics.overdue > 0 %}
+  <div class="alert-overdue">
+    <strong>Vencido em aberto:</strong> {{ metrics.overdue_fmt }}
+    <span class="muted">— faturas encerradas e ainda não pagas que serão somadas à fatura atual.</span>
+  </div>
+  {% endif %}
 
   <div class="g2">
     <div class="blk">

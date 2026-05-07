@@ -32,7 +32,7 @@
           <button type="button" class="btn btn-ghost btn-sm"
             hx-post="/cards/{{ card.id }}/bills/{{ view.bill.id }}/unpay?{{ query }}"
             hx-target="#cards-table-wrap" hx-swap="innerHTML">Desfazer</button>
-          {% elif view.is_unpaid_closed or view.is_open %}
+          {% elif view.is_unpaid_closed %}
           <button type="button" class="btn btn-primary btn-sm"
             hx-post="/cards/{{ card.id }}/bills/{{ view.bill.id }}/pay?{{ query }}"
             hx-target="#cards-table-wrap" hx-swap="innerHTML">Pagar</button>

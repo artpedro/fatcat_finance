@@ -99,6 +99,39 @@ function fatcatIncomeEndToggle(cb) {
   if (!cb.checked) end.value = "";
 }
 
+function fatcatBrDateAutoFormat(input) {
+  if (!input || input.dataset.brDateBound === "1") return;
+  input.dataset.brDateBound = "1";
+  input.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!target) return;
+    const digits = (target.value || "").replace(/\D+/g, "").slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) {
+      formatted = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    } else if (digits.length > 2) {
+      formatted = digits.slice(0, 2) + "/" + digits.slice(2);
+    }
+    if (target.value !== formatted) {
+      target.value = formatted;
+    }
+  });
+  input.addEventListener("blur", (event) => {
+    const target = event.target;
+    if (!target || !target.value) return;
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(target.value)) {
+      target.setCustomValidity("Use o formato dd/mm/aaaa.");
+    } else {
+      target.setCustomValidity("");
+    }
+  });
+}
+
+function fatcatBrDateInitAll(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll("input[data-br-date]").forEach(fatcatBrDateAutoFormat);
+}
+
 function fatcatModalBackdrop(event, modal) {
   if (event.target !== modal) return;
   const clearUrl = modal.getAttribute("data-modal-clear");
@@ -125,6 +158,7 @@ document.body.addEventListener("htmx:afterSwap", () => {
   document.querySelectorAll("select[name='category_id']").forEach((sel) => fatcatToggleNewCategory(sel));
   document.querySelectorAll("form[data-sub-term]").forEach((f) => fatcatSubscriptionTermInit(f));
   fatcatIncomeFormInit();
+  fatcatBrDateInitAll();
   if (window.fatcatRenderCharts) window.fatcatRenderCharts();
 });
 
@@ -135,5 +169,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("select[name='category_id']").forEach((sel) => fatcatToggleNewCategory(sel));
   document.querySelectorAll("form[data-sub-term]").forEach((f) => fatcatSubscriptionTermInit(f));
   fatcatIncomeFormInit();
+  fatcatBrDateInitAll();
   document.addEventListener("keydown", fatcatModalEscape);
 });

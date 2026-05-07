@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.category_utils import category_map_by_id, parse_category_id
 from app.db import get_session
+from app.form_dates import date_to_br, parse_br_date
 from app.models import Card, Expense, PixItem, Subscription
 from app.routes.categories import build_category_field
 from app.routes.common import base_context, get_settings, resolve_and_sync_period
@@ -341,7 +342,7 @@ def expense_form(request: Request, session: Session = Depends(get_session)):
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
     cards = list(session.exec(select(Card)))
-    today = datetime.now(UTC).date().isoformat()
+    today = date_to_br(datetime.now(UTC).date())
     context = base_context(request, month, year, settings)
     context["query"] = expenses_list_query(request, month, year)
     context.update({"expense": None, "cards": cards, "purchase_date": today})
@@ -357,7 +358,9 @@ def expense_form_edit(expense_id: str, request: Request, session: Session = Depe
     expense = session.get(Expense, expense_id)
     purchase_date = ""
     if expense:
-        purchase_date = datetime(expense.purchase_year, expense.purchase_month + 1, expense.purchase_day).date().isoformat()
+        purchase_date = date_to_br(
+            datetime(expense.purchase_year, expense.purchase_month + 1, expense.purchase_day).date()
+        )
     context = base_context(request, month, year, settings)
     context["query"] = expenses_list_query(request, month, year)
     context.update({"expense": expense, "cards": cards, "purchase_date": purchase_date})
@@ -398,9 +401,11 @@ def save_expense(
     if amount_total <= 0:
         raise HTTPException(status_code=400, detail="Valor deve ser maior que zero.")
     try:
-        date_obj = datetime.strptime(purchase_date, "%Y-%m-%d")
+        date_obj = parse_br_date(purchase_date)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Data de compra inválida.") from exc
+        raise HTTPException(
+            status_code=400, detail=f"Data de compra inválida: {exc}"
+        ) from exc
 
     try:
         cid = parse_category_id(session, category_id)

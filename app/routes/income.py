@@ -7,7 +7,10 @@ from fastapi.responses import HTMLResponse
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.form_dates import month_year_to_date_iso, parse_iso_date_to_month_year
+from app.form_dates import (
+    month_year_to_date_br,
+    parse_br_date_to_month_year,
+)
 from app.models import IncomeSource
 from app.routes.common import base_context, get_settings, resolve_and_sync_period
 from app.services.finance import fmt_month, is_income_active
@@ -53,8 +56,8 @@ def form(request: Request, session: Session = Depends(get_session)):
     context.update(
         {
             "source": None,
-            "start_date_iso": month_year_to_date_iso(year, month, 1),
-            "end_date_iso": "",
+            "start_date_br": month_year_to_date_br(year, month, 1),
+            "end_date_br": "",
             "income_has_end": False,
         }
     )
@@ -66,20 +69,20 @@ def form_edit(income_id: str, request: Request, session: Session = Depends(get_s
     settings = get_settings(session)
     month, year = resolve_and_sync_period(request, session, settings)
     source = session.get(IncomeSource, income_id)
-    start_date_iso = month_year_to_date_iso(year, month, 1)
-    end_date_iso = ""
+    start_date_br = month_year_to_date_br(year, month, 1)
+    end_date_br = ""
     income_has_end = False
     if source:
-        start_date_iso = month_year_to_date_iso(source.start_year, source.start_month, 1)
+        start_date_br = month_year_to_date_br(source.start_year, source.start_month, 1)
         if source.end_month is not None and source.end_year is not None:
-            end_date_iso = month_year_to_date_iso(source.end_year, source.end_month, 1)
+            end_date_br = month_year_to_date_br(source.end_year, source.end_month, 1)
             income_has_end = True
     context = base_context(request, month, year, settings)
     context.update(
         {
             "source": source,
-            "start_date_iso": start_date_iso,
-            "end_date_iso": end_date_iso,
+            "start_date_br": start_date_br,
+            "end_date_br": end_date_br,
             "income_has_end": income_has_end,
         }
     )
@@ -109,9 +112,9 @@ def save(
     if source is None:
         source = IncomeSource(name=name, amount=amount, start_month=0, start_year=2024)
     try:
-        sm_start, sy_start = parse_iso_date_to_month_year(start)
+        sm_start, sy_start = parse_br_date_to_month_year(start)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Data de início inválida.") from exc
+        raise HTTPException(status_code=400, detail=f"Data de início inválida: {exc}") from exc
     source.name = name.strip()
     source.amount = float(amount)
     source.kind = kind
@@ -124,9 +127,9 @@ def save(
         if not end_raw:
             raise HTTPException(status_code=400, detail="Informe a data de término ou desmarque a opção.")
         try:
-            em, ey = parse_iso_date_to_month_year(end_raw)
+            em, ey = parse_br_date_to_month_year(end_raw)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Data de término inválida.") from exc
+            raise HTTPException(status_code=400, detail=f"Data de término inválida: {exc}") from exc
         source.end_month = em
         source.end_year = ey
     else:

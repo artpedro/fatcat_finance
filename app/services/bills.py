@@ -2,14 +2,20 @@
 
 When a card (or the optional PIX pseudo-flow) crosses its closing day, the
 cycle it just finished becomes a frozen `BillCycle` with a snapshot of every
-line it contained. Open cycles are not snapshotted (they are computed live via
-`finance.lines_for_open_cycle`) except for `carryover` lines, which represent
-the total of the preceding `closed_unpaid` bill rolled forward as a single
-"Fatura vencida" entry.
+own-period line it contained. `total_amount` always represents that cycle's
+own spending - never another cycle's carryover - so historical "cost per
+month" stays consistent regardless of what the user pays later.
+
+`carryover` lines exist ONLY on the currently OPEN cycle. They are purely
+informational reminders that prior `closed_unpaid` bills still need to be
+settled. They do not contribute to `bill.total_amount` and do not appear in
+closed snapshots, so paying or unpaying any prior bill never invalidates
+older snapshots.
 
 The module is idempotent: calling `materialize_closed_cycles` multiple times
-on the same state only creates missing rows and refreshes the open cycle's
-carryover to reflect the latest pay/unpay actions.
+on the same state only creates missing rows, scrubs stale carryover lines,
+and rebuilds the open cycle's carryover list to reflect the latest pay/unpay
+actions.
 """
 
 from __future__ import annotations
@@ -192,9 +198,12 @@ def _ensure_closed_card_cycle(
 ) -> BillCycle:
     """Create (if missing) the closed_unpaid cycle ending at (em, ey) with its snapshot lines.
 
-    If a bill already exists as `open` but time has moved past its end, we promote
-    it to `closed_unpaid` and freeze a snapshot of its current contents. Already
-    closed/paid bills are left untouched.
+    The snapshot contains ONLY this cycle's own spending - never carryover
+    from prior cycles - so `total_amount` is always the pure cost of charges
+    that closed in this period. If a bill already exists as `open` but time
+    has moved past its end, we promote it to `closed_unpaid` and re-freeze
+    its own-period contents (dropping any carryover lines that may have
+    lived on it while open). Already closed/paid bills are left untouched.
     """
     bill = _get_bill(session, "card", card.id, em, ey)
     if bill is not None and bill.status in ("closed_unpaid", "paid"):
@@ -223,24 +232,6 @@ def _ensure_closed_card_cycle(
         subscriptions=subscriptions,
         category_names=category_names,
     )
-    prev_m, prev_y = _prev_cycle(em, ey)
-    prev_bill = _get_bill(session, "card", card.id, prev_m, prev_y)
-    if prev_bill is not None and prev_bill.status == "closed_unpaid":
-        lines.append(
-            {
-                "kind": "carryover",
-                "source_ref_id": prev_bill.id,
-                "description": f"Fatura vencida {prev_m + 1:02d}/{prev_y}",
-                "category_name_snapshot": "Fatura vencida",
-                "amount": float(prev_bill.total_amount),
-                "charge_day": bill.cycle_start_day,
-                "charge_month": bill.cycle_start_month,
-                "charge_year": bill.cycle_start_year,
-                "installment_num": None,
-                "installments_total": None,
-                "notes": "",
-            }
-        )
     total = _insert_lines(session, bill, lines)
     bill.total_amount = total
     bill.updated_at = datetime.now(UTC)
@@ -284,24 +275,6 @@ def _ensure_closed_pix_cycle(
         subscriptions=subscriptions,
         category_names=category_names,
     )
-    prev_m, prev_y = _prev_cycle(em, ey)
-    prev_bill = _get_bill(session, "pix", None, prev_m, prev_y)
-    if prev_bill is not None and prev_bill.status == "closed_unpaid":
-        lines.append(
-            {
-                "kind": "carryover",
-                "source_ref_id": prev_bill.id,
-                "description": f"Fatura vencida {prev_m + 1:02d}/{prev_y}",
-                "category_name_snapshot": "Fatura vencida",
-                "amount": float(prev_bill.total_amount),
-                "charge_day": bill.cycle_start_day,
-                "charge_month": bill.cycle_start_month,
-                "charge_year": bill.cycle_start_year,
-                "installment_num": None,
-                "installments_total": None,
-                "notes": "",
-            }
-        )
     total = _insert_lines(session, bill, lines)
     bill.total_amount = total
     bill.updated_at = datetime.now(UTC)
@@ -337,25 +310,61 @@ def _ensure_open_cycle(
 
 
 def _refresh_open_carryover(
-    session: Session, bill: BillCycle, prev_bill: BillCycle | None
+    session: Session, bill: BillCycle, prior_unpaid: list[BillCycle]
 ) -> None:
-    """Drop carryover lines on an open cycle and rebuild from the previous cycle's status."""
+    """Rebuild the carryover lines on the open `bill` from every unpaid prior bill.
+
+    Each closed_unpaid bill earlier than `bill` contributes one DISTINCT
+    `carryover` line (per the user's requirement). Carryover lines do NOT
+    affect `bill.total_amount`; they are informational reminders only.
+    """
     _delete_lines(session, bill.id, kinds=["carryover"])
     session.flush()
-    if prev_bill is not None and prev_bill.status == "closed_unpaid":
+    for prev in prior_unpaid:
         session.add(
             BillCycleLine(
                 bill_cycle_id=bill.id,
                 kind="carryover",
-                source_ref_id=prev_bill.id,
-                description=f"Fatura vencida {prev_bill.cycle_end_month + 1:02d}/{prev_bill.cycle_end_year}",
+                source_ref_id=prev.id,
+                description=f"Fatura vencida {prev.cycle_end_month + 1:02d}/{prev.cycle_end_year}",
                 category_name_snapshot="Fatura vencida",
-                amount=float(prev_bill.total_amount),
+                amount=float(prev.total_amount),
                 charge_day=bill.cycle_start_day,
                 charge_month=bill.cycle_start_month,
                 charge_year=bill.cycle_start_year,
             )
         )
+
+
+def _scrub_legacy_carryover(session: Session, bill: BillCycle) -> None:
+    """Strip `carryover` lines from a closed/paid bill (legacy data only).
+
+    Newer materializations never write carryover into closed bills, but
+    pre-existing rows may still have them. We drop those lines and recompute
+    `total_amount` from what remains so historical totals reflect own
+    spending only.
+    """
+    if bill.status == "open":
+        return
+    carryovers = list(
+        session.exec(
+            select(BillCycleLine).where(
+                BillCycleLine.bill_cycle_id == bill.id,
+                BillCycleLine.kind == "carryover",
+            )
+        )
+    )
+    if not carryovers:
+        return
+    for row in carryovers:
+        session.delete(row)
+    session.flush()
+    remaining = list(
+        session.exec(select(BillCycleLine).where(BillCycleLine.bill_cycle_id == bill.id))
+    )
+    bill.total_amount = sum(float(row.amount) for row in remaining)
+    bill.updated_at = datetime.now(UTC)
+    session.add(bill)
 
 
 def materialize_closed_cycles(session: Session, today: date | None = None) -> None:
@@ -409,9 +418,17 @@ def materialize_closed_cycles(session: Session, today: date | None = None) -> No
             em=active_em,
             ey=active_ey,
         )
-        prev_m, prev_y = _prev_cycle(active_em, active_ey)
-        prev_bill = _get_bill(session, "card", card.id, prev_m, prev_y)
-        _refresh_open_carryover(session, open_bill, prev_bill)
+        for bill in _list_bills(session, card.id, scope="card"):
+            _scrub_legacy_carryover(session, bill)
+        prior_unpaid = [
+            b
+            for b in _list_bills(session, card.id, scope="card")
+            if b.status == "closed_unpaid"
+            and mkey(b.cycle_end_month, b.cycle_end_year)
+            < mkey(open_bill.cycle_end_month, open_bill.cycle_end_year)
+        ]
+        prior_unpaid.sort(key=lambda b: mkey(b.cycle_end_month, b.cycle_end_year))
+        _refresh_open_carryover(session, open_bill, prior_unpaid)
 
     if pix_closing_day > 0:
         active_em, active_ey = active_cycle_today(pix_closing_day, today)
@@ -433,9 +450,17 @@ def materialize_closed_cycles(session: Session, today: date | None = None) -> No
             em=active_em,
             ey=active_ey,
         )
-        prev_m, prev_y = _prev_cycle(active_em, active_ey)
-        prev_bill = _get_bill(session, "pix", None, prev_m, prev_y)
-        _refresh_open_carryover(session, open_bill, prev_bill)
+        for bill in _list_bills(session, None, scope="pix"):
+            _scrub_legacy_carryover(session, bill)
+        prior_unpaid = [
+            b
+            for b in _list_bills(session, None, scope="pix")
+            if b.status == "closed_unpaid"
+            and mkey(b.cycle_end_month, b.cycle_end_year)
+            < mkey(open_bill.cycle_end_month, open_bill.cycle_end_year)
+        ]
+        prior_unpaid.sort(key=lambda b: mkey(b.cycle_end_month, b.cycle_end_year))
+        _refresh_open_carryover(session, open_bill, prior_unpaid)
 
     session.commit()
 
@@ -450,12 +475,63 @@ def open_bill_live_total(
     pix_items: list[PixItem],
     category_names: dict[str, str],
 ) -> tuple[float, list[dict]]:
-    """Compute the live contents + total of an open bill cycle.
+    """Compute the open bill's own-spending total plus its full line list.
 
-    Carryover lines are persisted in DB for open cycles; all other kinds are
-    recomputed from live sources. The returned list merges both so templates
-    render a consistent bill.
+    The returned `total` is OWN spending only (carryover is excluded), so it
+    can be summed safely across cycles for "monthly cost" reporting. The
+    returned list still contains carryover lines for UI rendering. Use
+    `split_lines` if you need own/carryover totals separately.
     """
+    own_total, carry_total, lines = _open_bill_split_totals(
+        session,
+        bill,
+        card=card,
+        expenses=expenses,
+        subscriptions=subscriptions,
+        pix_items=pix_items,
+        category_names=category_names,
+    )
+    _ = carry_total
+    return own_total, lines
+
+
+def open_bill_split_totals(
+    session: Session,
+    bill: BillCycle,
+    *,
+    card: Card | None,
+    expenses: list[Expense],
+    subscriptions: list[Subscription],
+    pix_items: list[PixItem],
+    category_names: dict[str, str],
+) -> tuple[float, float, list[dict]]:
+    """Return `(own_total, carryover_total, lines)` for the open bill.
+
+    `own_total` is this cycle's own spending. `carryover_total` is the sum of
+    `carryover` lines (overdue from prior unpaid bills). Adding them yields
+    the amount the user must pay to settle the open bill plus any overdue.
+    """
+    return _open_bill_split_totals(
+        session,
+        bill,
+        card=card,
+        expenses=expenses,
+        subscriptions=subscriptions,
+        pix_items=pix_items,
+        category_names=category_names,
+    )
+
+
+def _open_bill_split_totals(
+    session: Session,
+    bill: BillCycle,
+    *,
+    card: Card | None,
+    expenses: list[Expense],
+    subscriptions: list[Subscription],
+    pix_items: list[PixItem],
+    category_names: dict[str, str],
+) -> tuple[float, float, list[dict]]:
     carry = list(
         session.exec(
             select(BillCycleLine).where(
@@ -499,9 +575,200 @@ def open_bill_live_total(
         }
         for row in carry
     ]
-    all_lines = carry_dicts + live
-    total = sum(line["amount"] for line in all_lines)
-    return total, all_lines
+    own_total = sum(line["amount"] for line in live)
+    carry_total = sum(line["amount"] for line in carry_dicts)
+    return own_total, carry_total, carry_dicts + live
+
+
+def card_cycle_view(
+    session: Session,
+    card: Card,
+    end_month: int,
+    end_year: int,
+    *,
+    expenses: list[Expense],
+    subscriptions: list[Subscription],
+    pix_items: list[PixItem],
+    category_names: dict[str, str],
+) -> dict:
+    """Resolve the effective view of a card's cycle ending at (end_month, end_year).
+
+    - If a closed/paid bill exists: return its frozen lines and total.
+    - If an open bill exists: compute live own_total + carryover_total.
+    - If no bill exists (past empty cycle or future projection): compute
+      a projection via `lines_for_open_cycle` so the dashboard never shows
+      "0" for a future month with scheduled installments.
+
+    Returns a dict with: bill, status, own_total, carryover_total, total,
+    and lines (full list including carryover when applicable).
+    """
+    bill = session.exec(
+        select(BillCycle).where(
+            BillCycle.scope == "card",
+            BillCycle.card_id == card.id,
+            BillCycle.cycle_end_month == end_month,
+            BillCycle.cycle_end_year == end_year,
+        )
+    ).first()
+    if bill is not None and bill.status != "open":
+        rows = list(
+            session.exec(
+                select(BillCycleLine).where(BillCycleLine.bill_cycle_id == bill.id)
+            )
+        )
+        lines = [
+            {
+                "kind": row.kind,
+                "source_ref_id": row.source_ref_id,
+                "description": row.description,
+                "category_name_snapshot": row.category_name_snapshot,
+                "amount": float(row.amount),
+                "charge_day": row.charge_day,
+                "charge_month": row.charge_month,
+                "charge_year": row.charge_year,
+                "installment_num": row.installment_num,
+                "installments_total": row.installments_total,
+                "notes": row.notes,
+            }
+            for row in rows
+        ]
+        own_total = float(bill.total_amount)
+        return {
+            "bill": bill,
+            "status": bill.status,
+            "own_total": own_total,
+            "carryover_total": 0.0,
+            "total": own_total,
+            "lines": lines,
+            "is_projected": False,
+        }
+    if bill is not None and bill.status == "open":
+        own_total, carry_total, lines = _open_bill_split_totals(
+            session,
+            bill,
+            card=card,
+            expenses=expenses,
+            subscriptions=subscriptions,
+            pix_items=pix_items,
+            category_names=category_names,
+        )
+        return {
+            "bill": bill,
+            "status": "open",
+            "own_total": own_total,
+            "carryover_total": carry_total,
+            "total": own_total + carry_total,
+            "lines": lines,
+            "is_projected": False,
+        }
+    projected = lines_for_open_cycle(
+        card=card,
+        end_month=end_month,
+        end_year=end_year,
+        expenses=expenses,
+        subscriptions=subscriptions,
+        category_names=category_names,
+    )
+    own_total = sum(line["amount"] for line in projected)
+    return {
+        "bill": None,
+        "status": "projected",
+        "own_total": own_total,
+        "carryover_total": 0.0,
+        "total": own_total,
+        "lines": projected,
+        "is_projected": True,
+    }
+
+
+def pix_cycle_view(
+    session: Session,
+    end_month: int,
+    end_year: int,
+    *,
+    pix_closing_day: int,
+    pix_items: list[PixItem],
+    subscriptions: list[Subscription],
+    category_names: dict[str, str],
+) -> dict:
+    """Same contract as `card_cycle_view` but for the synthetic PIX flow."""
+    bill = session.exec(
+        select(BillCycle).where(
+            BillCycle.scope == "pix",
+            BillCycle.card_id.is_(None),  # type: ignore[union-attr]
+            BillCycle.cycle_end_month == end_month,
+            BillCycle.cycle_end_year == end_year,
+        )
+    ).first()
+    if bill is not None and bill.status != "open":
+        rows = list(
+            session.exec(
+                select(BillCycleLine).where(BillCycleLine.bill_cycle_id == bill.id)
+            )
+        )
+        lines = [
+            {
+                "kind": row.kind,
+                "source_ref_id": row.source_ref_id,
+                "description": row.description,
+                "category_name_snapshot": row.category_name_snapshot,
+                "amount": float(row.amount),
+                "charge_day": row.charge_day,
+                "charge_month": row.charge_month,
+                "charge_year": row.charge_year,
+                "installment_num": row.installment_num,
+                "installments_total": row.installments_total,
+                "notes": row.notes,
+            }
+            for row in rows
+        ]
+        own_total = float(bill.total_amount)
+        return {
+            "bill": bill,
+            "status": bill.status,
+            "own_total": own_total,
+            "carryover_total": 0.0,
+            "total": own_total,
+            "lines": lines,
+            "is_projected": False,
+        }
+    if bill is not None and bill.status == "open":
+        own_total, carry_total, lines = _open_bill_split_totals(
+            session,
+            bill,
+            card=None,
+            expenses=[],
+            subscriptions=subscriptions,
+            pix_items=pix_items,
+            category_names=category_names,
+        )
+        return {
+            "bill": bill,
+            "status": "open",
+            "own_total": own_total,
+            "carryover_total": carry_total,
+            "total": own_total + carry_total,
+            "lines": lines,
+            "is_projected": False,
+        }
+    projected = lines_for_open_pix_cycle(
+        end_month=end_month,
+        end_year=end_year,
+        pix_closing_day=pix_closing_day,
+        pix_items=pix_items,
+        subscriptions=subscriptions,
+        category_names=category_names,
+    )
+    own_total = sum(line["amount"] for line in projected)
+    return {
+        "bill": None,
+        "status": "projected",
+        "own_total": own_total,
+        "carryover_total": 0.0,
+        "total": own_total,
+        "lines": projected,
+        "is_projected": True,
+    }
 
 
 def lines_for_bill(
@@ -564,12 +831,16 @@ def lines_for_bill(
     return lines
 
 
-def pay_bill(session: Session, bill_id: str) -> BillCycle | None:
+def pay_bill(
+    session: Session, bill_id: str, *, today: date | None = None
+) -> BillCycle | None:
     """Mark a bill as paid.
 
-    If the bill was `open` at pay time, we snapshot its live contents into
-    `BillCycleLine` rows so the historical view stays frozen even if the
-    underlying Expense/Subscription rows are later edited.
+    If the bill was `open` at pay time, we snapshot its OWN-period contents
+    into `BillCycleLine` rows (carryover lines are dropped: they belong on
+    whatever cycle is currently open, not on a paid one). This keeps the
+    historical view frozen even if Expense/Subscription rows are later
+    edited, and ensures `total_amount` only reflects the bill's own cost.
     """
     bill = session.get(BillCycle, bill_id)
     if bill is None:
@@ -580,29 +851,41 @@ def pay_bill(session: Session, bill_id: str) -> BillCycle | None:
         subscriptions = list(session.exec(select(Subscription)))
         pix_items = list(session.exec(select(PixItem)))
         category_names = category_map_by_id(session)
-        _total, lines = open_bill_live_total(
-            session,
-            bill,
-            card=card,
-            expenses=expenses,
-            subscriptions=subscriptions,
-            pix_items=pix_items,
-            category_names=category_names,
-        )
+        own_lines: list[dict] = []
+        if bill.scope == "card" and card is not None:
+            own_lines = lines_for_open_cycle(
+                card=card,
+                end_month=bill.cycle_end_month,
+                end_year=bill.cycle_end_year,
+                expenses=expenses,
+                subscriptions=subscriptions,
+                category_names=category_names,
+            )
+        elif bill.scope == "pix":
+            own_lines = lines_for_open_pix_cycle(
+                end_month=bill.cycle_end_month,
+                end_year=bill.cycle_end_year,
+                pix_closing_day=bill.closing_day_snapshot,
+                pix_items=pix_items,
+                subscriptions=subscriptions,
+                category_names=category_names,
+            )
         _delete_lines(session, bill.id)
         session.flush()
-        total = _insert_lines(session, bill, lines)
+        total = _insert_lines(session, bill, own_lines)
         bill.total_amount = total
     bill.status = "paid"
     bill.paid_at = datetime.now(UTC)
     bill.updated_at = datetime.now(UTC)
     session.add(bill)
     session.commit()
-    materialize_closed_cycles(session)
+    materialize_closed_cycles(session, today)
     return bill
 
 
-def unpay_bill(session: Session, bill_id: str) -> BillCycle | None:
+def unpay_bill(
+    session: Session, bill_id: str, *, today: date | None = None
+) -> BillCycle | None:
     """Revert a bill back to closed_unpaid. Frozen lines stay as-is."""
     bill = session.get(BillCycle, bill_id)
     if bill is None:
@@ -612,5 +895,5 @@ def unpay_bill(session: Session, bill_id: str) -> BillCycle | None:
     bill.updated_at = datetime.now(UTC)
     session.add(bill)
     session.commit()
-    materialize_closed_cycles(session)
+    materialize_closed_cycles(session, today)
     return bill
