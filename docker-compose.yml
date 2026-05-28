@@ -1,0 +1,9 @@
+services:
+  fatcat:
+    build: .
+    container_name: fatcat-app
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./fatcat.db:/app/fatcat.db

@@ -34,3 +34,12 @@ uv run pytest -q
 ```bash
 PYTHONPATH=. uv run python -m app.seed --reset
 ```
+
+## Run with Docker (auto-start on boot)
+
+```bash
+docker compose up -d --build
+```
+
+The container is configured with `restart: unless-stopped`, so it starts
+automatically after reboot (as long as Docker is enabled on startup).
