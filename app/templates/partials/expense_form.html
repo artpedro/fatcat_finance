@@ -4,7 +4,7 @@
     <form hx-post="/expenses/save?{{ query }}"
           hx-target="#expenses-table-wrap"
           hx-swap="innerHTML"
-          hx-on::after-request="if(event.detail.successful) htmx.ajax('GET','/expenses/form-clear',{target:'#expense-form-wrap',swap:'innerHTML'})">
+          hx-on::after-request="if(event.detail.successful && event.detail.elt === this) htmx.ajax('GET','/expenses/form-clear',{target:'#expense-form-wrap',swap:'innerHTML'})">
       <input type="hidden" name="expense_id" value="{{ expense.id if expense else '' }}">
       <div class="fg">
         <label>Descrição</label>
