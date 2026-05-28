@@ -226,6 +226,7 @@ class SavingsGroup(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     name: str
     color: str = Field(default="#82C4A8")
+    cdi_pct: float = Field(default=100.0)
     target_amount: float = Field(default=0)
     notes: str = ""
     created_at: datetime = Field(default_factory=_now)
@@ -234,7 +235,7 @@ class SavingsGroup(SQLModel, table=True):
 
 class SavingsEntry(SQLModel, table=True):
     __table_args__ = (
-        CheckConstraint("direction IN ('deposit', 'withdrawal')", name="ck_save_direction"),
+        CheckConstraint("direction IN ('deposit', 'withdrawal', 'yield')", name="ck_save_direction"),
     )
 
     id: str = Field(default_factory=_uuid, primary_key=True)
@@ -245,5 +246,14 @@ class SavingsEntry(SQLModel, table=True):
     source_type: str = ""
     source_ref_id: str = ""
     notes: str = ""
+    created_at: datetime = Field(default_factory=_now)
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class CdiDaily(SQLModel, table=True):
+    """Daily CDI percentage value fetched from Banco Central SGS series 12."""
+
+    ref_date: str = Field(sa_column=Column(String, primary_key=True, nullable=False))
+    value_pct: float
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Financias - FatCat{% endblock %}
+{% block content %}
+<div class="stack-gap financias-page">
+  <div class="ph">
+    <div>
+      <h2>Financias</h2>
+      <p>Gestão paralela de dinheiro guardado (fora da área de faturas)</p>
+    </div>
+    <div class="financias-top-actions">
+      <button class="btn btn-primary" type="button" onclick="fatcatOpenModalById('new-caixinha-modal')">
+        + Nova caixinha
+      </button>
+    </div>
+  </div>
+
+  <div id="new-caixinha-modal" class="mo" aria-hidden="true" onclick="fatcatModalBackdrop(event, this)">
+    <div class="md" role="dialog" aria-modal="true" aria-labelledby="new-caixinha-title">
+      <div class="blk-hdr">
+        <h3 id="new-caixinha-title">Nova caixinha</h3>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fatcatCloseModalById('new-caixinha-modal')">Fechar</button>
+      </div>
+      <form method="post" action="/financias/groups">
+        <div class="fg-row3">
+          <label>
+            <span class="fg-label">Nome</span>
+            <input type="text" name="name" placeholder="Ex: Reserva de emergência" required>
+          </label>
+          <label>
+            <span class="fg-label">Meta (R$)</span>
+            <input type="number" min="0" step="0.01" name="target_amount" value="0">
+          </label>
+          <label>
+            <span class="fg-label">% do CDI</span>
+            <input type="number" min="0" step="0.01" name="cdi_pct" value="100">
+          </label>
+          <label>
+            <span class="fg-label">Cor</span>
+            <input type="color" name="color" value="#82C4A8">
+          </label>
+        </div>
+        <div class="fg">
+          <label>
+            <span class="fg-label">Notas</span>
+            <input type="text" name="notes" placeholder="Opcional">
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Criar caixinha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="financias-section-head">
+    <h3>Resumo</h3>
+  </div>
+  <div class="financias-kpi-grid">
+    <div class="metric">
+      <h4>Total guardado</h4>
+      <p class="val {% if total_balance >= 0 %}green{% else %}red{% endif %}">{{ total_balance_fmt }}</p>
+    </div>
+    <div class="metric">
+      <h4>Rendimento de hoje</h4>
+      <p class="val green">{{ today_total_rendimento_fmt }}</p>
+      <p class="sub">Somatório dos rendimentos lançados hoje</p>
+    </div>
+    <div class="metric">
+      <h4>Rendimento total no período</h4>
+      <p class="val green">{{ period_total_rendimento_fmt }}</p>
+      <p class="sub">Dentro do filtro selecionado</p>
+    </div>
+    <div class="metric">
+      <h4>Rendimento acumulado geral</h4>
+      <p class="val green">{{ all_time_total_rendimento_fmt }}</p>
+      <p class="sub">Desde início dos rendimentos</p>
+    </div>
+  </div>
+
+  <div class="financias-section-head">
+    <h3>Evolução</h3>
+  </div>
+  <div class="financias-main-grid">
+    <div class="blk financias-main-chart">
+      <h3>Evolução do valor bruto por caixinha</h3>
+      <p class="hint">Saldo acumulado semanal com todas as movimentações (aportes, retiradas e rendimentos)</p>
+      <div class="chart-wrap chart-240">
+        <canvas id="savingsGrossChart" aria-label="Evolução do valor bruto por caixinha"></canvas>
+      </div>
+      <script id="savings-gross-data" type="application/json">{{ gross_evolution_chart|tojson }}</script>
+    </div>
+
+    <div class="blk financias-side-chart">
+      <div class="row-between">
+        <h3>Rendimento semanal por caixinha</h3>
+        <span class="hint">Barras por caixinha + linha total</span>
+      </div>
+      <form method="get" action="/financias" class="filter-bar">
+        <div class="field">
+          <label for="months-window">Últimos X meses até hoje</label>
+          <select id="months-window" name="months_window">
+            <option value="1" {% if months_window == '1' %}selected{% endif %}>1 mês</option>
+            <option value="3" {% if months_window == '3' %}selected{% endif %}>3 meses</option>
+            <option value="6" {% if months_window == '6' %}selected{% endif %}>6 meses</option>
+            <option value="12" {% if months_window == '12' %}selected{% endif %}>12 meses</option>
+            <option value="24" {% if months_window == '24' %}selected{% endif %}>24 meses</option>
+            <option value="all" {% if months_window == 'all' %}selected{% endif %}>Todo período</option>
+            <option value="custom" {% if months_window == 'custom' %}selected{% endif %}>Personalizado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="chart-from">De</label>
+          <input id="chart-from" type="date" name="chart_from" value="{{ chart_from }}">
+        </div>
+        <div class="field">
+          <label for="chart-to">Até</label>
+          <input id="chart-to" type="date" name="chart_to" value="{{ chart_to }}">
+        </div>
+        <div class="filter-submit">
+          <button class="btn btn-primary btn-sm" type="submit">Aplicar</button>
+        </div>
+      </form>
+      <div class="chart-wrap chart-240 savings-weekly-chart">
+        <canvas id="savingsGrowthChart" aria-label="Rendimento semanal por caixinha"></canvas>
+      </div>
+      <p class="hint mt-1">Cada barra representa o rendimento da semana (rótulo = 1º dia da semana).</p>
+      <script id="savings-growth-data" type="application/json">{{ growth_chart|tojson }}</script>
+    </div>
+  </div>
+
+  <div class="financias-section-head">
+    <h3>Caixinhas</h3>
+  </div>
+  <div class="savings-grid">
+    {% for row in groups %}
+      <div class="blk savings-box">
+        <div class="row-between">
+          <div>
+            <h3 style="margin-bottom: 4px;">
+              <span class="dot" style="background: {{ row.group.color }};"></span>
+              {{ row.group.name }}
+            </h3>
+            {% if row.group.target_amount > 0 %}
+              <p class="hint">Meta: {{ row.target_fmt }}</p>
+            {% endif %}
+            <form method="post" action="/financias/groups/{{ row.group.id }}/cdi" class="financias-cdi-edit-form">
+              <label class="hint">
+                <span>% CDI:</span>
+                <input type="number" min="0" step="0.01" name="cdi_pct" value="{{ "%.2f"|format(row.group.cdi_pct) }}">
+              </label>
+              <button type="submit" class="btn btn-ghost btn-sm">Salvar</button>
+            </form>
+          </div>
+          <form method="post" action="/financias/groups/{{ row.group.id }}/delete" onsubmit="return confirm('Excluir esta caixinha e todas as movimentações?');">
+            <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+          </form>
+        </div>
+
+        <div class="mc" style="margin: 12px 0;">
+          <div class="lbl">Saldo atual</div>
+          <div class="val {% if row.balance >= 0 %}green{% else %}red{% endif %}">{{ row.balance_fmt }}</div>
+          <div class="sub">Rendimento no período: {{ row.period_rendimento_fmt }}</div>
+          <div class="sub">Rendimento acumulado: {{ row.all_time_rendimento_fmt }}</div>
+        </div>
+
+        <form method="post" action="/financias/groups/{{ row.group.id }}/entries">
+          <div class="fg-row3">
+            <label>
+              <span class="fg-label">Tipo</span>
+              <select name="direction">
+                <option value="deposit">Adicionar</option>
+                <option value="withdrawal">Remover</option>
+              </select>
+            </label>
+            <label>
+              <span class="fg-label">Valor (R$)</span>
+              <input type="number" min="0.01" step="0.01" name="amount" required>
+            </label>
+            <label>
+              <span class="fg-label">Data</span>
+              <input type="date" name="entry_date" value="{{ today_iso }}" required>
+            </label>
+          </div>
+          <div class="fg">
+            <label>
+              <span class="fg-label">Observação</span>
+              <input type="text" name="notes" placeholder="Opcional">
+            </label>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm" type="submit">Registrar movimentação</button>
+          </div>
+        </form>
+
+        <div class="tw" style="margin-top: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Observação</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for movement in row.movements %}
+                <tr>
+                  <td>{{ movement.entry_date_fmt }}</td>
+                  <td>
+                    <span class="badge {% if movement.entry.direction == 'deposit' %}bg-green{% elif movement.entry.direction == 'withdrawal' %}bg-red{% else %}bg-blue{% endif %}">
+                      {{ movement.direction_label }}
+                    </span>
+                  </td>
+                  <td>{{ movement.entry.notes or "-" }}</td>
+                  <td class="{% if movement.signed_amount >= 0 %}green{% else %}red{% endif %}">{{ movement.signed_amount_fmt }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="4" class="text-muted">Sem movimentações ainda.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div class="blk">
+        <div class="empty">
+          <div class="empty-icon">💰</div>
+          <p>Crie sua primeira caixinha para começar.</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="financias-section-head">
+    <h3>Base e Cadastro</h3>
+  </div>
+  <div class="financias-ops-grid">
+    <div class="blk">
+      <h3>CDI diário (Banco Central)</h3>
+      <p class="hint">Série SGS 12, desde 01/01/2026.</p>
+      <div class="chart-wrap chart-240">
+        <canvas id="cdiDailyChart" aria-label="CDI diário"></canvas>
+      </div>
+      <script id="cdi-daily-data" type="application/json">{{ cdi_chart|tojson }}</script>
+    </div>
+  </div>
+</div>
+{% endblock %}

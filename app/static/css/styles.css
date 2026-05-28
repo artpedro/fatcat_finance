@@ -906,6 +906,116 @@ textarea:disabled,
   gap: 16px;
 }
 
+.savings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 20px;
+}
+
+.savings-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.financias-page {
+  gap: 22px;
+}
+
+.financias-section-head h3 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+.financias-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.financias-main-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 18px;
+}
+
+.financias-main-chart,
+.financias-side-chart {
+  min-width: 0;
+}
+
+.financias-ops-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 18px;
+}
+
+.financias-caixinhas-head {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.financias-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.financias-cdi-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.financias-cdi-edit-form label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.financias-cdi-edit-form input[type="number"] {
+  width: 92px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.savings-weekly-chart {
+  min-height: 280px;
+}
+
+@media (max-width: 1200px) {
+  .financias-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .financias-ops-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .financias-caixinhas-head {
+    align-items: flex-start;
+  }
+
+  .financias-top-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .financias-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .card-panel {
   display: flex;
   flex-direction: column;
@@ -1110,6 +1220,16 @@ textarea:disabled,
 .line-amount {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.cat-breakdown-wrap {
+  max-height: 300px;
+}
+
+.cat-breakdown-total {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
 }
 
 .pix-cycle-card {

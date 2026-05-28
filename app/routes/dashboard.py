@@ -51,13 +51,31 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
     cards_total = 0.0
     cards_overdue = 0.0
     cat_totals: dict[str, float] = {}
+    cat_items: dict[str, list[dict]] = {}
+
+    def _origin_from_kind(kind: str) -> str:
+        if kind == "pix":
+            return "PIX"
+        if kind == "subscription":
+            return "Assinatura"
+        if kind in {"expense", "debit", "maintenance"}:
+            return "Cartão"
+        return "Outro"
 
     def _fold_lines(lines: list[dict]) -> None:
         for line in lines:
             if line["kind"] == "carryover":
                 continue
+            amount = float(line["amount"])
             cat = line.get("category_name_snapshot") or "Outros"
-            cat_totals[cat] = cat_totals.get(cat, 0.0) + float(line["amount"])
+            cat_totals[cat] = cat_totals.get(cat, 0.0) + amount
+            cat_items.setdefault(cat, []).append(
+                {
+                    "description": line.get("description") or cat,
+                    "amount": round(amount, 2),
+                    "origin": _origin_from_kind(line.get("kind", "")),
+                }
+            )
 
     for card in cards:
         view = card_cycle_view(
@@ -144,6 +162,8 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
         chart_card_values.append(round(subscription_pix_total, 2))
         chart_card_colors.append("#F0C060")
 
+    for cat_label in cat_items:
+        cat_items[cat_label].sort(key=lambda item: item["amount"], reverse=True)
     chart_cat_labels = list(cat_totals.keys())
     chart_cat_values = [round(cat_totals[name], 2) for name in chart_cat_labels]
     palette = ["#DB8A74", "#9B8FD4", "#82C4A8", "#E4A840", "#C4A4D8", "#88B8E0", "#FAC9B8"]
@@ -249,6 +269,7 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
             },
             "chart_card": {"labels": chart_card_labels, "values": chart_card_values, "colors": chart_card_colors},
             "chart_cat": {"labels": chart_cat_labels, "values": chart_cat_values, "colors": chart_cat_colors},
+            "chart_cat_details": cat_items,
             "sankey": {"nodes": sankey_nodes, "links": sankey_links},
             "breakdown": [
                 {

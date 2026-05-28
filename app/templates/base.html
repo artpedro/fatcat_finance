@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}FatCat{% endblock %}</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32.png?v=3">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16.png?v=3">
+  <link rel="shortcut icon" href="/favicon.ico?v=3">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/img/favicon-180.png?v=3">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -44,6 +48,10 @@
         <a class="nb {% if active == 'categories' %}active{% endif %}" href="/categories?{{ query }}">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           Categorias
+        </a>
+        <a class="nb {% if active == 'financias' %}active{% endif %}" href="/financias?{{ query }}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z"/><path d="M3 10h18"/><circle cx="16.5" cy="14" r="1.5" fill="currentColor"/></svg>
+          Financias
         </a>
       </nav>
       <div class="sb-foot">

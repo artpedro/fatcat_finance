@@ -58,6 +58,32 @@
         <canvas id="catChart"></canvas>
       </div>
       <script id="cat-chart-data" type="application/json">{{ chart_cat|tojson }}</script>
+      <script id="cat-chart-details-data" type="application/json">{{ chart_cat_details|tojson }}</script>
+    </div>
+  </div>
+
+  <div id="cat-breakdown-modal" class="mo" aria-hidden="true" onclick="fatcatModalBackdrop(event, this)">
+    <div class="md" role="dialog" aria-modal="true" aria-labelledby="cat-breakdown-title">
+      <div class="blk-hdr">
+        <h3 id="cat-breakdown-title">Categoria</h3>
+        <button type="button" class="btn btn-ghost btn-sm" id="cat-breakdown-close">Fechar</button>
+      </div>
+      <div class="tw cat-breakdown-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Origem</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody id="cat-breakdown-rows"></tbody>
+        </table>
+      </div>
+      <div class="row-split cat-breakdown-total">
+        <strong>Total da categoria</strong>
+        <strong id="cat-breakdown-total-value">R$ 0,00</strong>
+      </div>
     </div>
   </div>
 

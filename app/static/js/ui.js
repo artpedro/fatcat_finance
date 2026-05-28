@@ -138,7 +138,10 @@ function fatcatModalBackdrop(event, modal) {
   const target = modal.getAttribute("data-modal-target");
   if (clearUrl && target && window.htmx) {
     window.htmx.ajax("GET", clearUrl, { target: target, swap: "innerHTML" });
+    return;
   }
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function fatcatModalEscape(event) {
@@ -149,7 +152,24 @@ function fatcatModalEscape(event) {
   const target = open.getAttribute("data-modal-target");
   if (clearUrl && target && window.htmx) {
     window.htmx.ajax("GET", clearUrl, { target: target, swap: "innerHTML" });
+    return;
   }
+  open.classList.remove("open");
+  open.setAttribute("aria-hidden", "true");
+}
+
+function fatcatOpenModalById(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function fatcatCloseModalById(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 document.body.addEventListener("htmx:afterSwap", () => {
